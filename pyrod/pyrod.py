@@ -7,7 +7,7 @@ dMIFs, pharmacophores and centroids.
 """
 
 # Standard library
-from typing import Tuple
+from typing import Tuple, Sequence, Optional
 import argparse
 import configparser
 import multiprocessing
@@ -17,6 +17,7 @@ import warnings
 
 # 3rd party
 import numpy as np
+import MDAnalysis as mda
 
 # Self
 import pyrod
@@ -73,6 +74,123 @@ def point_properties(
     return
 
 
+def trajectory_analysis(
+        center: Tuple[int, int, int] = (0,0,0),
+        edge_lengths: Tuple[int, int, int] = (30, 30, 30),
+        topology: str = "/path/to/topology.pdb",
+        trajectories: Sequence[str] = (
+                "/path/to/trajectory0.dcd", "/path/to/trajectory1.dcd",
+                "/path/to/trajectory2.dcd", "/path/to/trajectory3.dcd", "/path/to/trajectory4.dcd"
+        ),
+        first_frame: Optional[int] = None,
+        last_frame: Optional[int] = None,
+        step_size: Optional[int] = None,
+        metal_names: Sequence[str] = ["FE"],
+        map_formats: Sequence[str] = ("cns", "xplor", "kont"),
+        number_of_processes: int = 1,
+        dmifs_only: bool = False,
+):
+    """
+    Section for defining parameters for trajectory analysis. The
+    parameters for center and edge lengths (in Angstrom) of the grid can be
+    determined by using test_grid.cfg. First frame, last frame and step
+    size parameters can be used to specify the part of the trajectories to
+    analyze. If all three parameters are empty, trajectories will be
+    analyzed from beginning to end. Important metals can be specified
+    comma-separated as named in the topology file (e.g. FE). By default all
+    available map formats are written. Multi processing is supported. If
+    pharmacophores are not of interest, the dmifs only parameter can be set
+    true, interaction partners will not be recorded resulting in improved
+    computational performance and dramatically lower memory usage.
+    """
+    if debugging:
+        total_number_of_frames = len(
+            mda.Universe(trajectories[0]).trajectory[first_frame:last_frame:step_size]
+        ) * len(trajectories)
+    else:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            total_number_of_frames = len(
+                mda.Universe(trajectories[0]).trajectory[first_frame:last_frame:step_size]
+            ) * len(trajectories)
+    get_partners = not dmifs_only
+    grid_score, grid_partners = pyrod.grid.dmif_data_structure(
+        pyrod.grid.generate_grid(center, edge_lengths), get_partners
+    )
+    manager = multiprocessing.Manager()
+    results = manager.list()
+    frame_counter = multiprocessing.Value("i", 0)
+    trajectory_time = time.time()
+    processes = [
+        multiprocessing.Process(
+            target=pyrod.trajectory.trajectory_analysis,
+            args=(
+                topology,
+                trajectory,
+                grid_score,
+                grid_partners,
+                frame_counter,
+                total_number_of_frames,
+                first_frame,
+                last_frame,
+                step_size,
+                metal_names,
+                counter,
+                directory,
+                debugging,
+                get_partners,
+                trajectory_time,
+                results,
+            ),
+        )
+        for counter, trajectory in enumerate(trajectories)
+    ]
+    if len(trajectories) > 1:
+        pyrod.write.update_user(
+            "Analyzing {} frames from {} trajectories.".format(
+                total_number_of_frames, len(trajectories)
+            ),
+            logger,
+        )
+    else:
+        pyrod.write.update_user(
+            "Analyzing {} frames from 1 trajectory.".format(total_number_of_frames), logger
+        )
+    for chunk in chunks(processes, number_of_processes):
+        for process in chunk:
+            process.start()
+        for process in chunk:
+            process.join()
+    pyrod.write.update_user("Processing results.", logger)
+    # convert multiprocessing list to true python list
+    results_list = []
+    for x in results:
+        results_list.append(x)
+    results = None
+    dmif, partners = pyrod.grid.post_processing(results_list, total_number_of_frames)
+    results_list = None
+    pyrod.write.update_user("Writing raw data to {}/data.".format(directory), logger)
+    pyrod.write.pickle_writer(dmif, "dmif", "{}/{}".format(directory, "data"))
+    if get_partners:
+        for key in pyrod.lookup.grid_list_dict.keys():
+            pyrod.write.pickle_writer(
+                partners[key].tolist(), key, "/".join([directory, "data"])
+            )
+    partners = None
+    pyrod.write.update_user("Writing maps to {}/dmifs.".format(directory), logger)
+    for map_format in map_formats:
+        for feature_type in [x for x in dmif.dtype.names if x not in ["x", "y", "z"]]:
+            pyrod.write.dmif_writer(
+                dmif[feature_type],
+                np.array([[x, y, z] for x, y, z in zip(dmif["x"], dmif["y"], dmif["z"])]),
+                map_format,
+                feature_type,
+                "{}/{}".format(directory, "dmifs"),
+                logger,
+            )
+    return
+
+
 if __name__ == "__main__":
     start_time = time.time()
     parser = argparse.ArgumentParser(
@@ -94,102 +212,6 @@ if __name__ == "__main__":
     logger = pyrod.write.setup_logger("main", directory, debugging)
     pyrod.write.update_user("\n".join(pyrod.lookup.logo), logger)
     logger.debug("\n".join([": ".join(list(_)) for _ in config.items("directory")]))
-
-    # trajectory analysis
-    if config.has_section("trajectory analysis parameters"):
-        pyrod.write.update_user("Starting trajectory analysis.", logger)
-        logger.debug(
-            "\n".join([": ".join(list(_)) for _ in config.items("trajectory analysis parameters")])
-        )
-        (
-            center,
-            edge_lengths,
-            topology,
-            trajectories,
-            first_frame,
-            last_frame,
-            step_size,
-            total_number_of_frames,
-            metal_names,
-            map_formats,
-            number_of_processes,
-            get_partners,
-        ) = pyrod.config.trajectory_analysis_parameters(config, debugging)
-        pyrod.write.update_user("Initializing grid.", logger)
-        grid_score, grid_partners = pyrod.grid.dmif_data_structure(
-            pyrod.grid.generate_grid(center, edge_lengths), get_partners
-        )
-        manager = multiprocessing.Manager()
-        results = manager.list()
-        frame_counter = multiprocessing.Value("i", 0)
-        trajectory_time = time.time()
-        processes = [
-            multiprocessing.Process(
-                target=pyrod.trajectory.trajectory_analysis,
-                args=(
-                    topology,
-                    trajectory,
-                    grid_score,
-                    grid_partners,
-                    frame_counter,
-                    total_number_of_frames,
-                    first_frame,
-                    last_frame,
-                    step_size,
-                    metal_names,
-                    counter,
-                    directory,
-                    debugging,
-                    get_partners,
-                    trajectory_time,
-                    results,
-                ),
-            )
-            for counter, trajectory in enumerate(trajectories)
-        ]
-        if len(trajectories) > 1:
-            pyrod.write.update_user(
-                "Analyzing {} frames from {} trajectories.".format(
-                    total_number_of_frames, len(trajectories)
-                ),
-                logger,
-            )
-        else:
-            pyrod.write.update_user(
-                "Analyzing {} frames from 1 trajectory.".format(total_number_of_frames), logger
-            )
-        for chunk in chunks(processes, number_of_processes):
-            for process in chunk:
-                process.start()
-            for process in chunk:
-                process.join()
-        pyrod.write.update_user("Processing results.", logger)
-        # convert multiprocessing list to true python list
-        results_list = []
-        for x in results:
-            results_list.append(x)
-        results = None
-        dmif, partners = pyrod.grid.post_processing(results_list, total_number_of_frames)
-        results_list = None
-        pyrod.write.update_user("Writing raw data to {}/data.".format(directory), logger)
-        pyrod.write.pickle_writer(dmif, "dmif", "{}/{}".format(directory, "data"))
-        if get_partners:
-            for key in pyrod.lookup.grid_list_dict.keys():
-                pyrod.write.pickle_writer(
-                    partners[key].tolist(), key, "/".join([directory, "data"])
-                )
-        partners = None
-        pyrod.write.update_user("Writing maps to {}/dmifs.".format(directory), logger)
-        for map_format in map_formats:
-            for feature_type in [x for x in dmif.dtype.names if x not in ["x", "y", "z"]]:
-                pyrod.write.dmif_writer(
-                    dmif[feature_type],
-                    np.array([[x, y, z] for x, y, z in zip(dmif["x"], dmif["y"], dmif["z"])]),
-                    map_format,
-                    feature_type,
-                    "{}/{}".format(directory, "dmifs"),
-                    logger,
-                )
 
     # generating exclusion volumes
     if config.has_section("exclusion volume parameters"):
