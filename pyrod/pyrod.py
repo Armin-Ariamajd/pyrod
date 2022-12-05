@@ -14,6 +14,9 @@ import multiprocessing
 import os
 import time
 import warnings
+import pickle
+from collections import OrderedDict
+
 
 # 3rd party
 import numpy as np
@@ -68,10 +71,15 @@ def point_properties(
     point. The grid point is described by coordinates, e.g. from a
     pharmacophore feature. Path to dmif.pkl needs to be specified.
     """
-    point_properties_dict = pyrod.grid.get_point_properties(point, dmif_path)
-    for key, value in point_properties_dict.items():
-        pyrod.write.update_user("{}: {}".format(key, value), logger)
-    return
+    with open(dmif_path, "rb") as file:
+        dmif = pickle.load(file)
+    point_properties = dmif[
+        (dmif["x"] == point[0]) & (dmif["y"] == point[1]) & (dmif["z"] == point[2])
+    ]
+    point_properties_dict = OrderedDict()
+    for point_property in point_properties.dtype.names:
+        point_properties_dict[point_property] = round(point_properties[point_property][0], 2)
+    return point_properties_dict
 
 
 def trajectory_analysis(
