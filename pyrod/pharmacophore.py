@@ -18,25 +18,49 @@ from scipy.spatial import cKDTree
 try:
     from pyrod.pyrod_lib.lookup import grid_list_dict
     from pyrod.pyrod_lib.math import distance
-    from pyrod.pyrod_lib.pharmacophore_helper import get_core_tolerance, get_maximal_core_tolerance, \
-        get_maximal_sum_of_scores, get_partner_positions, get_partner_tolerance, evaluate_pharmacophore, \
-        combine_features
+    from pyrod.pyrod_lib.pharmacophore_helper import (
+        get_core_tolerance,
+        get_maximal_core_tolerance,
+        get_maximal_sum_of_scores,
+        get_partner_positions,
+        get_partner_tolerance,
+        evaluate_pharmacophore,
+        combine_features,
+    )
     from pyrod.pyrod_lib.read import pickle_reader, pharmacophore_reader
-    from pyrod.pyrod_lib.write import file_path, setup_logger, pharmacophore_writer, update_progress, update_user, \
-        bytes_to_text
+    from pyrod.pyrod_lib.write import (
+        file_path,
+        setup_logger,
+        pharmacophore_writer,
+        update_progress,
+        update_user,
+        bytes_to_text,
+    )
 except ImportError:
     from pyrod.lookup import grid_list_dict
     from pyrod.math import distance
-    from pyrod.pharmacophore_helper import get_core_tolerance, get_maximal_core_tolerance, \
-        get_maximal_sum_of_scores, get_partner_positions, get_partner_tolerance, evaluate_pharmacophore, \
-        combine_features
+    from pyrod.pharmacophore_helper import (
+        get_core_tolerance,
+        get_maximal_core_tolerance,
+        get_maximal_sum_of_scores,
+        get_partner_positions,
+        get_partner_tolerance,
+        evaluate_pharmacophore,
+        combine_features,
+    )
     from pyrod.read import pickle_reader, pharmacophore_reader
-    from pyrod.write import file_path, setup_logger, pharmacophore_writer, bytes_to_text, update_progress, \
-        update_user
+    from pyrod.write import (
+        file_path,
+        setup_logger,
+        pharmacophore_writer,
+        bytes_to_text,
+        update_progress,
+        update_user,
+    )
 
 
 def generate_exclusion_volumes(dmif, directory, debugging, shape_cutoff, restrictive):
-    """ This function generates exclusion volumes. The exclusion volumes are described with a list of properties as
+    """This function generates exclusion volumes. The exclusion volumes are described with a list of properties as
     follows.
 
     Format:
@@ -56,26 +80,38 @@ def generate_exclusion_volumes(dmif, directory, debugging, shape_cutoff, restric
     6 - partner tolerance [not needed for exclusion volumes]
     7 - weight
     """
-    logger = setup_logger('exclusion_volumes', directory, debugging)
-    update_user('Generating exclusion volumes.', logger)
+    logger = setup_logger("exclusion_volumes", directory, debugging)
+    update_user("Generating exclusion volumes.", logger)
     grid_space = 0.5
     exclusion_volume_space = 4
     if restrictive:
         exclusion_volume_space = 2
-    grid_tree = cKDTree([[x, y, z] for x, y, z in zip(dmif['x'], dmif['y'], dmif['z'])])
-    dtype = [('x', float), ('y', float), ('z', float), ('shape', int), ('count', int)]
-    dmif_shape = np.array([(x, y, z, shape, 0) for x, y, z, shape in zip(dmif['x'], dmif['y'], dmif['z'], dmif['shape'])
-                           if shape < shape_cutoff], dtype=dtype)
-    positions = np.array([[x, y, z] for x, y, z in zip(dmif_shape['x'], dmif_shape['y'], dmif_shape['z'])])
+    grid_tree = cKDTree([[x, y, z] for x, y, z in zip(dmif["x"], dmif["y"], dmif["z"])])
+    dtype = [("x", float), ("y", float), ("z", float), ("shape", int), ("count", int)]
+    dmif_shape = np.array(
+        [
+            (x, y, z, shape, 0)
+            for x, y, z, shape in zip(dmif["x"], dmif["y"], dmif["z"], dmif["shape"])
+            if shape < shape_cutoff
+        ],
+        dtype=dtype,
+    )
+    positions = np.array(
+        [[x, y, z] for x, y, z in zip(dmif_shape["x"], dmif_shape["y"], dmif_shape["z"])]
+    )
     shape_tree = cKDTree(positions)
     shape_grid_size = len(dmif_shape)
     # store number of neighbors with shape score smaller than shape_cutoff for grid points
     for index in range(shape_grid_size):
-        dmif_shape['count'][index] = len(shape_tree.query_ball_point(positions[index], grid_space * 4))
+        dmif_shape["count"][index] = len(
+            shape_tree.query_ball_point(positions[index], grid_space * 4)
+        )
     # sort for neighbor count
-    dmif_shape = np.sort(dmif_shape, order='count')
+    dmif_shape = np.sort(dmif_shape, order="count")
     # rebuild positions and shape_tree
-    positions = np.array([[x, y, z] for x, y, z in zip(dmif_shape['x'], dmif_shape['y'], dmif_shape['z'])])
+    positions = np.array(
+        [[x, y, z] for x, y, z in zip(dmif_shape["x"], dmif_shape["y"], dmif_shape["z"])]
+    )
     shape_tree = cKDTree(positions)
     used = []
     exclusion_volumes = []
@@ -84,7 +120,9 @@ def generate_exclusion_volumes(dmif, directory, debugging, shape_cutoff, restric
     for index in range(shape_grid_size):
         # grid_point index should not be in used list
         if index not in used:
-            neighbor_list = shape_tree.query_ball_point(positions[index], exclusion_volume_space / 2)
+            neighbor_list = shape_tree.query_ball_point(
+                positions[index], exclusion_volume_space / 2
+            )
             # elements of neighbor_list should not be in used list
             if len(set(neighbor_list + used)) == len(neighbor_list) + len(used):
                 # grid_point should not be at border of grid
@@ -92,20 +130,40 @@ def generate_exclusion_volumes(dmif, directory, debugging, shape_cutoff, restric
                     # grid_point should not be directly at border of binding pocket
                     if len(shape_tree.query_ball_point(positions[index], r=grid_space)) == 7:
                         # grid_point should not be surrounded by grid_points outside the binding pocket
-                        if len(shape_tree.query_ball_point(positions[index], r=grid_space * 2)) < 33:
-                            exclusion_volumes.append([counter, 'ev', 'M', positions[index], 1.0, [], 0.0, 1.0])
+                        if (
+                            len(shape_tree.query_ball_point(positions[index], r=grid_space * 2))
+                            < 33
+                        ):
+                            exclusion_volumes.append(
+                                [counter, "ev", "M", positions[index], 1.0, [], 0.0, 1.0]
+                            )
                             counter += 1
                             used += neighbor_list
         eta = ((time.time() - start) / (index + 1)) * (shape_grid_size - (index + 1))
-        update_progress(float(index + 1) / shape_grid_size, 'Progress of exclusion volume generation', eta)
-        logger.debug('Passed grid index {}.'.format(index))
-    update_user('Finished with generation of {} exclusion volumes.'.format(len(exclusion_volumes)), logger)
+        update_progress(
+            float(index + 1) / shape_grid_size, "Progress of exclusion volume generation", eta
+        )
+        logger.debug("Passed grid index {}.".format(index))
+    update_user(
+        "Finished with generation of {} exclusion volumes.".format(len(exclusion_volumes)), logger
+    )
     return exclusion_volumes
 
 
-def generate_features(positions, feature_scores, feature_type, features_per_feature_type, directory, partner_path,
-                      debugging, total_number_of_features, start, feature_counter, results):
-    """ This function generates features with variable tolerance based on a global maximum search algorithm. The
+def generate_features(
+    positions,
+    feature_scores,
+    feature_type,
+    features_per_feature_type,
+    directory,
+    partner_path,
+    debugging,
+    total_number_of_features,
+    start,
+    feature_counter,
+    results,
+):
+    """This function generates features with variable tolerance based on a global maximum search algorithm. The
     features are described with a list of properties as follows.
 
     Format:
@@ -132,11 +190,13 @@ def generate_features(positions, feature_scores, feature_type, features_per_feat
     6 - partner tolerance
     7 - weight
     """
-    logger = setup_logger('_'.join(['features', feature_type]), directory, debugging)
+    logger = setup_logger("_".join(["features", feature_type]), directory, debugging)
     if partner_path is None:
-        partner_path = directory + '/data'
+        partner_path = directory + "/data"
     if feature_type in grid_list_dict.keys():
-        partners = pickle_reader(partner_path + '/' + feature_type + '.pkl', feature_type + '.pkl', logger)
+        partners = pickle_reader(
+            partner_path + "/" + feature_type + ".pkl", feature_type + ".pkl", logger
+        )
     else:
         partners = [[]] * len(positions)
     score_minimum = 1
@@ -146,7 +206,11 @@ def generate_features(positions, feature_scores, feature_type, features_per_feat
     used = []
     while feature_scores[not_used].max() >= score_minimum:
         feature_maximum = feature_scores[not_used].max()
-        logger.debug('Feature {} maximum of remaining grid points at {}.'.format(feature_type, feature_maximum))
+        logger.debug(
+            "Feature {} maximum of remaining grid points at {}.".format(
+                feature_type, feature_maximum
+            )
+        )
         indices_not_checked = np.where(abs(feature_scores - feature_maximum) < 1e-8)[0]
         indices = []
         # check if grid points within minimum tolerance already used for features
@@ -160,16 +224,23 @@ def generate_features(positions, feature_scores, feature_type, features_per_feat
             # check if only one grid point
             if len(indices) == 1:
                 index = indices[0]
-                core_tolerance, feature_indices = get_core_tolerance(positions[index], tree, feature_scores,
-                                                                     feature_maximum)
+                core_tolerance, feature_indices = get_core_tolerance(
+                    positions[index], tree, feature_scores, feature_maximum
+                )
             # if more than one grid point, search for the ones with the biggest tolerance
             else:
-                core_tolerance, indices_maximal_tolerance, feature_indices_list = \
-                    get_maximal_core_tolerance(indices, positions, tree, feature_scores, feature_maximum)
+                (
+                    core_tolerance,
+                    indices_maximal_tolerance,
+                    feature_indices_list,
+                ) = get_maximal_core_tolerance(
+                    indices, positions, tree, feature_scores, feature_maximum
+                )
                 # if more than one grid point with biggest tolerance, search for the one with the biggest score
                 if len(indices_maximal_tolerance) > 1:
-                    index, feature_indices = get_maximal_sum_of_scores(feature_scores, indices_maximal_tolerance,
-                                                                       feature_indices_list)
+                    index, feature_indices = get_maximal_sum_of_scores(
+                        feature_scores, indices_maximal_tolerance, feature_indices_list
+                    )
                 else:
                     index = indices_maximal_tolerance[0]
                     feature_indices = feature_indices_list[0]
@@ -177,33 +248,55 @@ def generate_features(positions, feature_scores, feature_type, features_per_feat
                 not_used = [x for x in not_used if x != index]
                 used.append(index)
             else:
-                generated_features.append([index, feature_type, 'M', positions[index], core_tolerance,
-                                           get_partner_positions(feature_type, partners[index]),
-                                           get_partner_tolerance(feature_type, core_tolerance), 1.0])
+                generated_features.append(
+                    [
+                        index,
+                        feature_type,
+                        "M",
+                        positions[index],
+                        core_tolerance,
+                        get_partner_positions(feature_type, partners[index]),
+                        get_partner_tolerance(feature_type, core_tolerance),
+                        1.0,
+                    ]
+                )
                 not_used = [x for x in not_used if x not in feature_indices]
                 used += feature_indices
                 with feature_counter.get_lock():
                     feature_counter.value += 1
-                update_progress(feature_counter.value / total_number_of_features, 'Progress of feature generation',
-                                ((time.time() - start) / feature_counter.value) * (total_number_of_features -
-                                                                                   feature_counter.value))
+                update_progress(
+                    feature_counter.value / total_number_of_features,
+                    "Progress of feature generation",
+                    ((time.time() - start) / feature_counter.value)
+                    * (total_number_of_features - feature_counter.value),
+                )
             if len(generated_features) >= features_per_feature_type:
                 break
     if len(generated_features) < features_per_feature_type:
         with feature_counter.get_lock():
             feature_counter.value += features_per_feature_type - len(generated_features)
-        update_progress(feature_counter.value / total_number_of_features, 'Progress of feature generation',
-                        ((time.time() - start) / feature_counter.value) * (total_number_of_features -
-                                                                           feature_counter.value))
+        update_progress(
+            feature_counter.value / total_number_of_features,
+            "Progress of feature generation",
+            ((time.time() - start) / feature_counter.value)
+            * (total_number_of_features - feature_counter.value),
+        )
     results += generated_features
     return
 
 
-def generate_library(pharmacophore_path, output_format, library_dict, library_path, pyrod_pharmacophore,
-                     directory, debugging):
-    """ This function writes a combinatorial pharmacophore library. """
-    logger = setup_logger('library', directory, debugging)
-    update_user('Starting library generation.', logger)
+def generate_library(
+    pharmacophore_path,
+    output_format,
+    library_dict,
+    library_path,
+    pyrod_pharmacophore,
+    directory,
+    debugging,
+):
+    """This function writes a combinatorial pharmacophore library."""
+    logger = setup_logger("library", directory, debugging)
+    update_user("Starting library generation.", logger)
     template_pharmacophore = pharmacophore_reader(pharmacophore_path, pyrod_pharmacophore, logger)
     pharmacophore_library = []
     essential_hb, essential_hi, essential_ai, essential_ii = [], [], [], []
@@ -211,80 +304,131 @@ def generate_library(pharmacophore_path, output_format, library_dict, library_pa
     exclusion_volumes = []
     # analyzing pharmacophore
     for index, feature in enumerate(template_pharmacophore):
-        if feature[1] == 'ev':
+        if feature[1] == "ev":
             exclusion_volumes.append(feature)
         else:
-            if feature[1] in ['ha', 'hd', 'ha2', 'hd2', 'hda']:
-                if feature[2] == 'O':
+            if feature[1] in ["ha", "hd", "ha2", "hd2", "hda"]:
+                if feature[2] == "O":
                     optional_hb.append(index)
                 else:
                     essential_hb.append(index)
-            elif feature[1] == 'hi':
-                if feature[2] == 'O':
+            elif feature[1] == "hi":
+                if feature[2] == "O":
                     optional_hi.append(index)
                 else:
                     essential_hi.append(index)
-            elif feature[1] in ['pi', 'ni']:
-                if feature[2] == 'O':
+            elif feature[1] in ["pi", "ni"]:
+                if feature[2] == "O":
                     optional_ii.append(index)
                 else:
                     essential_ii.append(index)
-            elif feature[1] == 'ai':
-                if feature[2] == 'O':
+            elif feature[1] == "ai":
+                if feature[2] == "O":
                     optional_ai.append(index)
                 else:
                     essential_ai.append(index)
     essential_features = essential_hb + essential_hi + essential_ai + essential_ii
-    for hb_combination in combine_features(optional_hb, library_dict['minimal hydrogen bonds'] - len(essential_hb),
-                                           library_dict['maximal hydrogen bonds'] - len(essential_hb) + 1):
-        for hi_combination in combine_features(optional_hi, library_dict['minimal hydrophobic interactions'] -
-                                               len(essential_hi), library_dict['maximal hydrophobic interactions'] -
-                                               len(essential_hi) + 1):
-            for ai_combination in combine_features(optional_ai, library_dict['minimal aromatic interactions'] -
-                                                   len(essential_ai), library_dict['maximal aromatic interactions'] -
-                                                   len(essential_ai) + 1):
-                for ii_combination in combine_features(optional_ii, library_dict['minimal ionizable interactions'] -
-                                                       len(essential_ii),
-                                                       library_dict['maximal ionizable interactions'] -
-                                                       len(essential_ii) + 1):
-                    pharmacophore = (essential_features + hb_combination + hi_combination + ai_combination +
-                                     ii_combination)
-                    if evaluate_pharmacophore(pharmacophore, template_pharmacophore, library_dict, pyrod_pharmacophore):
+    for hb_combination in combine_features(
+        optional_hb,
+        library_dict["minimal hydrogen bonds"] - len(essential_hb),
+        library_dict["maximal hydrogen bonds"] - len(essential_hb) + 1,
+    ):
+        for hi_combination in combine_features(
+            optional_hi,
+            library_dict["minimal hydrophobic interactions"] - len(essential_hi),
+            library_dict["maximal hydrophobic interactions"] - len(essential_hi) + 1,
+        ):
+            for ai_combination in combine_features(
+                optional_ai,
+                library_dict["minimal aromatic interactions"] - len(essential_ai),
+                library_dict["maximal aromatic interactions"] - len(essential_ai) + 1,
+            ):
+                for ii_combination in combine_features(
+                    optional_ii,
+                    library_dict["minimal ionizable interactions"] - len(essential_ii),
+                    library_dict["maximal ionizable interactions"] - len(essential_ii) + 1,
+                ):
+                    pharmacophore = (
+                        essential_features
+                        + hb_combination
+                        + hi_combination
+                        + ai_combination
+                        + ii_combination
+                    )
+                    if evaluate_pharmacophore(
+                        pharmacophore, template_pharmacophore, library_dict, pyrod_pharmacophore
+                    ):
                         pharmacophore_library.append(pharmacophore)
     # estimate maximal library size and ask user if number and space of pharmacophores is okay
-    pharmacophore_writer(template_pharmacophore, [output_format], 'template_pharmacophore', library_path, logger)
-    pharmacophore_library_size = bytes_to_text(os.path.getsize('{}/{}.{}'.format(library_path, 'template_pharmacophore',
-                                               output_format)) * len(pharmacophore_library))
-    user_prompt = ''
-    while user_prompt not in ['yes', 'no']:
-        user_prompt = input('{} pharmacophores will be written taking about {} of space.\n'
-                            'Do you want to continue? [yes/no]: '.format(len(pharmacophore_library),
-                                                                         pharmacophore_library_size))
-        if user_prompt == 'no':
+    pharmacophore_writer(
+        template_pharmacophore, [output_format], "template_pharmacophore", library_path, logger
+    )
+    pharmacophore_library_size = bytes_to_text(
+        os.path.getsize("{}/{}.{}".format(library_path, "template_pharmacophore", output_format))
+        * len(pharmacophore_library)
+    )
+    user_prompt = ""
+    while user_prompt not in ["yes", "no"]:
+        user_prompt = input(
+            "{} pharmacophores will be written taking about {} of space.\n"
+            "Do you want to continue? [yes/no]: ".format(
+                len(pharmacophore_library), pharmacophore_library_size
+            )
+        )
+        if user_prompt == "no":
             sys.exit()
     start = time.time()
     # write pharmacophores
-    maximal_exclusion_volume_id = max([exclusion_volume[0] for exclusion_volume in exclusion_volumes])
+    maximal_exclusion_volume_id = max(
+        [exclusion_volume[0] for exclusion_volume in exclusion_volumes]
+    )
     for counter, index_pharmacophore in enumerate(pharmacophore_library):
         extra_exclusion_volumes = []
         extra_ev_counter = 1
         pharmacophore = []
         for index_feature in index_pharmacophore:
             feature = template_pharmacophore[index_feature]
-            feature[2] = 'M'
+            feature[2] = "M"
             pharmacophore.append(feature)
-            if feature[1] in ['ha', 'hd', 'ha2', 'hd2', 'hda']:
-                extra_exclusion_volumes.append([maximal_exclusion_volume_id + extra_ev_counter, 'ev', 'M',
-                                               feature[5][0], 1.0, [], 0.0, 0.0])
+            if feature[1] in ["ha", "hd", "ha2", "hd2", "hda"]:
+                extra_exclusion_volumes.append(
+                    [
+                        maximal_exclusion_volume_id + extra_ev_counter,
+                        "ev",
+                        "M",
+                        feature[5][0],
+                        1.0,
+                        [],
+                        0.0,
+                        0.0,
+                    ]
+                )
                 extra_ev_counter += 1
-                if feature[1] in ['ha2', 'hd2', 'hda']:
-                    extra_exclusion_volumes.append([maximal_exclusion_volume_id + extra_ev_counter, 'ev', 'M',
-                                                   feature[5][1], 1.0, [], 0.0, 0.0])
+                if feature[1] in ["ha2", "hd2", "hda"]:
+                    extra_exclusion_volumes.append(
+                        [
+                            maximal_exclusion_volume_id + extra_ev_counter,
+                            "ev",
+                            "M",
+                            feature[5][1],
+                            1.0,
+                            [],
+                            0.0,
+                            0.0,
+                        ]
+                    )
                     extra_ev_counter += 1
-        pharmacophore_writer(pharmacophore + exclusion_volumes + extra_exclusion_volumes, [output_format],
-                             str(counter), library_path, logger)
-        update_progress((counter + 1) / len(pharmacophore_library),
-                        'Writing {} pharmacophores'.format(len(pharmacophore_library)),
-                        ((time.time() - start) / (counter + 1)) * (len(pharmacophore_library) - (counter + 1)))
-    update_user('Wrote pharmacophores to {}.'.format(library_path), logger)
+        pharmacophore_writer(
+            pharmacophore + exclusion_volumes + extra_exclusion_volumes,
+            [output_format],
+            str(counter),
+            library_path,
+            logger,
+        )
+        update_progress(
+            (counter + 1) / len(pharmacophore_library),
+            "Writing {} pharmacophores".format(len(pharmacophore_library)),
+            ((time.time() - start) / (counter + 1)) * (len(pharmacophore_library) - (counter + 1)),
+        )
+    update_user("Wrote pharmacophores to {}.".format(library_path), logger)
     return
