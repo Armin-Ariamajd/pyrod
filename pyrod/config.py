@@ -20,16 +20,6 @@ except ImportError:
     from pyrod.write import update_user
 
 
-def exclusion_volume_parameters(config):
-    shape_cutoff = float(config.get("exclusion volume parameters", "shape cutoff"))
-    restrictive = config.get("exclusion volume parameters", "restrictive")
-    if restrictive == "true":
-        restrictive = True
-    else:
-        restrictive = False
-    return [shape_cutoff, restrictive]
-
-
 def feature_parameters(config):
     features_per_feature_type = int(config.get("feature parameters", "features per feature type"))
     number_of_processes = int(config.get("feature parameters", "number of processes"))

@@ -191,6 +191,26 @@ def trajectory_analysis(
     return
 
 
+def exclusion_volume_params(
+        dmif: str = "/path/to/pyrod/data/dmif.pkl",
+        shape_cutoff: float = 1,
+        restrictive: bool = False,
+):
+    """
+    Section for defining parameters for exclusion volume generation based
+    on dmifs. Path to dmif.pkl needs to be specified. All grid points
+    smaller than shape cutoff will be considered for exclusion volume
+    generation. The restrictive parameter can be set true to generate a
+    more dense exclusion volume coat.
+    """
+    dmif = pyrod.read.pickle_reader(dmif, "dmif", logger)
+    evs = pyrod.pharmacophore.generate_exclusion_volumes(
+        dmif, directory, debugging, shape_cutoff, restrictive
+    )
+    pyrod.write.pickle_writer(evs, "exclusion_volumes", "/".join([directory, "data"]))
+    return
+
+
 if __name__ == "__main__":
     start_time = time.time()
     parser = argparse.ArgumentParser(
@@ -212,21 +232,6 @@ if __name__ == "__main__":
     logger = pyrod.write.setup_logger("main", directory, debugging)
     pyrod.write.update_user("\n".join(pyrod.lookup.logo), logger)
     logger.debug("\n".join([": ".join(list(_)) for _ in config.items("directory")]))
-
-    # generating exclusion volumes
-    if config.has_section("exclusion volume parameters"):
-        logger.debug(
-            "\n".join([": ".join(list(_)) for _ in config.items("exclusion volume parameters")])
-        )
-        if "dmif" not in locals():
-            dmif = pyrod.read.pickle_reader(
-                config.get("exclusion volume parameters", "dmif"), "dmif", logger
-            )
-        shape_cutoff, restrictive = pyrod.config.exclusion_volume_parameters(config)
-        evs = pyrod.pharmacophore.generate_exclusion_volumes(
-            dmif, directory, debugging, shape_cutoff, restrictive
-        )
-        pyrod.write.pickle_writer(evs, "exclusion_volumes", "/".join([directory, "data"]))
 
     # generating features
     if config.has_section("feature parameters"):
