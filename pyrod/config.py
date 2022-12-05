@@ -20,14 +20,6 @@ except ImportError:
     from pyrod.write import update_user
 
 
-def point_properties_parameters(config):
-    point = [
-        float(x.strip()) for x in config.get("point properties parameters", "point").split(",")
-    ]
-    dmif_path = config.get("point properties parameters", "dmif")
-    return point, dmif_path
-
-
 def trajectory_analysis_parameters(config, debugging):
     center = [
         int(x.strip()) for x in config.get("trajectory analysis parameters", "center").split(",")

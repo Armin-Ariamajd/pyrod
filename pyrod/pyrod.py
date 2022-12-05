@@ -58,6 +58,21 @@ def write_test_grid_to_pdb(
     return
 
 
+def point_properties(
+        point: Tuple[float, float, float] = (0, 0, 0),
+        dmif_path: str = "/path/to/pyrod/data/dmif.pkl",
+):
+    """
+    Section for defining parameters to retrieve dMIF properties of a grid
+    point. The grid point is described by coordinates, e.g. from a
+    pharmacophore feature. Path to dmif.pkl needs to be specified.
+    """
+    point_properties_dict = pyrod.grid.get_point_properties(point, dmif_path)
+    for key, value in point_properties_dict.items():
+        pyrod.write.update_user("{}: {}".format(key, value), logger)
+    return
+
+
 if __name__ == "__main__":
     start_time = time.time()
     parser = argparse.ArgumentParser(
@@ -79,17 +94,6 @@ if __name__ == "__main__":
     logger = pyrod.write.setup_logger("main", directory, debugging)
     pyrod.write.update_user("\n".join(pyrod.lookup.logo), logger)
     logger.debug("\n".join([": ".join(list(_)) for _ in config.items("directory")]))
-
-    # point properties
-    if config.has_section("point properties parameters"):
-        logger.debug(
-            "\n".join([": ".join(list(_)) for _ in config.items("point properties parameters")])
-        )
-        point, dmif_path = pyrod.config.point_properties_parameters(config)
-        pyrod.write.update_user("Getting point properties from {}.".format(dmif_path), logger)
-        point_properties_dict = pyrod.grid.get_point_properties(point, dmif_path)
-        for key, value in point_properties_dict.items():
-            pyrod.write.update_user("{}: {}".format(key, value), logger)
 
     # trajectory analysis
     if config.has_section("trajectory analysis parameters"):
