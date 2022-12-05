@@ -10,7 +10,6 @@ import os
 import sys
 import time
 import warnings
-
 # external libraries
 import math
 import MDAnalysis as mda
@@ -18,94 +17,8 @@ import MDAnalysis.analysis.encore as encore
 import numpy as np
 from scipy.spatial import cKDTree
 from scipy.spatial.distance import cdist
-
 # pyrod modules
-try:
-    from pyrod.pyrod_lib.grid import grid_characteristics, grid_partners_to_array
-    from pyrod.pyrod_lib.lookup import (
-        grid_list_dict,
-        hb_dist_dict,
-        hb_angl_dict,
-        hd_sel_dict,
-        sel_cutoff_dict,
-        pi_stacking_distance_score_dict,
-        t_stacking_distance_score_dict,
-        cation_pi_distance_score_dict,
-        CATION_PI_ANGLE_CUTOFF,
-        standard_resnames_dict,
-        CLASH_CUTOFF,
-    )
-    from pyrod.pyrod_lib.math import (
-        distance,
-        angle,
-        normal,
-        opposite,
-        adjacent,
-        norm,
-        vector_angle,
-        vector,
-        cross_product,
-    )
-    from pyrod.pyrod_lib.read import pharmacophore_reader
-    from pyrod.pyrod_lib.trajectory_helper import (
-        main_selection,
-        hd_selection,
-        ha_selection,
-        hi_selection,
-        ni_selection,
-        pi_selection,
-        ai_selection,
-        metal_selection,
-        heavy_atom_selection,
-        buriedness,
-        pi_stacking_partner_position,
-        ai_geometry,
-        t_stacking_partner_position,
-    )
-    from pyrod.pyrod_lib.write import setup_logger, file_path, update_user, update_progress
-except ImportError:
-    from pyrod.grid import grid_characteristics, grid_partners_to_array
-    from pyrod.lookup import (
-        grid_list_dict,
-        hb_dist_dict,
-        hb_angl_dict,
-        hd_sel_dict,
-        sel_cutoff_dict,
-        pi_stacking_distance_score_dict,
-        t_stacking_distance_score_dict,
-        cation_pi_distance_score_dict,
-        CATION_PI_ANGLE_CUTOFF,
-        standard_resnames_dict,
-        CLASH_CUTOFF,
-    )
-    from pyrod.math import (
-        distance,
-        angle,
-        normal,
-        opposite,
-        adjacent,
-        norm,
-        vector_angle,
-        vector,
-        cross_product,
-    )
-    from pyrod.read import pharmacophore_reader
-    from pyrod.trajectory_helper import (
-        main_selection,
-        hd_selection,
-        ha_selection,
-        hi_selection,
-        ni_selection,
-        pi_selection,
-        ai_selection,
-        metal_selection,
-        heavy_atom_selection,
-        buriedness,
-        pi_stacking_partner_position,
-        ai_geometry,
-        t_stacking_partner_position,
-    )
-    from pyrod.write import setup_logger, file_path, update_user, update_progress
+from pyrod import grid, lookup, math, read, trajectory_helper, write
 
 
 def trajectory_analysis(
@@ -126,7 +39,7 @@ def trajectory_analysis(
     trajectory_time,
     results,
 ):
-    logger = setup_logger("_".join(["dmif_trajectory", str(counter)]), directory, debugging)
+    logger = write.setup_logger("_".join(["dmif_trajectory", str(counter)]), directory, debugging)
     logger.info("Started analysis of trajectory {}.".format(counter))
     if debugging:
         u = mda.Universe(topology, trajectory)
@@ -151,18 +64,18 @@ def trajectory_analysis(
     positions = np.array(
         [[x, y, z] for x, y, z in zip(grid_score["x"], grid_score["y"], grid_score["z"])]
     )
-    x_minimum, x_maximum, y_minimum, y_maximum, z_minimum, z_maximum = grid_characteristics(
+    x_minimum, x_maximum, y_minimum, y_maximum, z_minimum, z_maximum = grid.grid_characteristics(
         positions
     )[:-1]
     tree = cKDTree(positions)
-    main_atoms = main_selection(topology)
-    hd_atomids, hd_types, hd_hydrogen_atomid_lists = hd_selection(main_atoms)
-    ha_atomids, ha_types = ha_selection(main_atoms)
-    hi_atomids = hi_selection(main_atoms)
-    ni_atomids = ni_selection(main_atoms)
-    pi_atomids = pi_selection(main_atoms)
-    ai_atomids = ai_selection(main_atoms)
-    metal_atomids = metal_selection(topology, metal_names)
+    main_atoms = trajectory_helper.main_selection(topology)
+    hd_atomids, hd_types, hd_hydrogen_atomid_lists = trajectory_helper.hd_selection(main_atoms)
+    ha_atomids, ha_types = trajectory_helper.ha_selection(main_atoms)
+    hi_atomids = trajectory_helper.hi_selection(main_atoms)
+    ni_atomids = trajectory_helper.ni_selection(main_atoms)
+    pi_atomids = trajectory_helper.pi_selection(main_atoms)
+    ai_atomids = trajectory_helper.ai_selection(main_atoms)
+    metal_atomids = trajectory_helper.metal_selection(topology, metal_names)
     for frame, _ in enumerate(u.trajectory[first_frame:last_frame:step_size]):
         # create index collectors
         shape_inds = []
@@ -190,19 +103,19 @@ def trajectory_analysis(
             tree_h2os = cKDTree(positions[h2os_os_box_inds])
             if len(hd_atomids) > 0:
                 hd_positions = positions[hd_atomids]
-                hd_lists = tree_h2os.query_ball_tree(cKDTree(hd_positions), sel_cutoff_dict["hb"])
+                hd_lists = tree_h2os.query_ball_tree(cKDTree(hd_positions), lookup.sel_cutoff_dict["hb"])
             else:
                 hd_positions = []
                 hd_lists = [[]] * len(h2os_os_box_inds)
             if len(ha_atomids) > 0:
                 ha_positions = positions[ha_atomids]
-                ha_lists = tree_h2os.query_ball_tree(cKDTree(ha_positions), sel_cutoff_dict["hb"])
+                ha_lists = tree_h2os.query_ball_tree(cKDTree(ha_positions), lookup.sel_cutoff_dict["hb"])
             else:
                 ha_positions = []
                 ha_lists = [[]] * len(h2os_os_box_inds)
             if len(hi_atomids) > 0:
                 hi_positions = positions[hi_atomids]
-                hi_lists = tree_h2os.query_ball_tree(cKDTree(hi_positions), sel_cutoff_dict["hi"])
+                hi_lists = tree_h2os.query_ball_tree(cKDTree(hi_positions), lookup.sel_cutoff_dict["hi"])
             else:
                 hi_positions = []
                 hi_lists = [[]] * len(h2os_os_box_inds)
@@ -211,7 +124,7 @@ def trajectory_analysis(
                     ((x + y) / 2)
                     for x, y in zip(positions[ni_atomids[::2]], positions[ni_atomids[1::2]])
                 ]
-                ni_lists = tree_h2os.query_ball_tree(cKDTree(ni_positions), sel_cutoff_dict["ii"])
+                ni_lists = tree_h2os.query_ball_tree(cKDTree(ni_positions), lookup.sel_cutoff_dict["ii"])
             else:
                 ni_positions = []
                 ni_lists = [[]] * len(h2os_os_box_inds)
@@ -220,7 +133,7 @@ def trajectory_analysis(
                     ((x + y) / 2)
                     for x, y in zip(positions[pi_atomids[::2]], positions[pi_atomids[1::2]])
                 ]
-                pi_lists = tree_h2os.query_ball_tree(cKDTree(pi_positions), sel_cutoff_dict["ii"])
+                pi_lists = tree_h2os.query_ball_tree(cKDTree(pi_positions), lookup.sel_cutoff_dict["ii"])
             else:
                 pi_positions = []
                 pi_lists = [[]] * len(h2os_os_box_inds)
@@ -234,12 +147,12 @@ def trajectory_analysis(
                     )
                 ]
                 ai_normals = [
-                    normal(a, b, c)
+                    math.normal(a, b, c)
                     for a, b, c in zip(
                         positions[ai_atomids[::3]], ai_positions, positions[ai_atomids[2::3]]
                     )
                 ]
-                ai_lists = tree_h2os.query_ball_tree(cKDTree(ai_positions), sel_cutoff_dict["ai"])
+                ai_lists = tree_h2os.query_ball_tree(cKDTree(ai_positions), lookup.sel_cutoff_dict["ai"])
             else:
                 ai_positions = []
                 ai_normals = []
@@ -247,7 +160,7 @@ def trajectory_analysis(
             if len(metal_atomids) > 0:
                 metal_positions = positions[metal_atomids]
                 metal_lists = tree_h2os.query_ball_tree(
-                    cKDTree(metal_positions), sel_cutoff_dict["metal"]
+                    cKDTree(metal_positions), lookup.sel_cutoff_dict["metal"]
                 )
             else:
                 metal_positions = []
@@ -284,17 +197,17 @@ def trajectory_analysis(
                     hd_types[hd_ind],
                     positions[hd_hydrogen_atomid_lists[hd_ind]],
                 ]
-                if distance(o_coor, hd_coor) <= hb_dist_dict[hd_type]:
+                if math.distance(o_coor, hd_coor) <= lookup.hb_dist_dict[hd_type]:
                     for hd_hydrogen_coor in hd_hydrogen_coors:
-                        if angle(o_coor, hd_hydrogen_coor, hd_coor) >= hb_angl_dict[hd_type]:
+                        if math.angle(o_coor, hd_hydrogen_coor, hd_coor) >= lookup.hb_angl_dict[hd_type]:
                             ha += 1
                             ha_i += [float(x) for x in hd_coor]
             # hydrogen bond donor feature
             for ha_ind in ha_list:
                 ha_coor, ha_type = ha_positions[ha_ind], ha_types[ha_ind]
-                if distance(o_coor, ha_coor) <= hb_dist_dict[ha_type]:
+                if math.distance(o_coor, ha_coor) <= lookup.hb_dist_dict[ha_type]:
                     for h_coor in [h1_coor, h2_coor]:
-                        if angle(ha_coor, h_coor, o_coor) >= hb_angl_dict[ha_type]:
+                        if math.angle(ha_coor, h_coor, o_coor) >= lookup.hb_angl_dict[ha_type]:
                             hd += 1
                             hd_i += [float(x) for x in ha_coor]
             # metals
@@ -302,7 +215,7 @@ def trajectory_analysis(
                 metal_position = metal_positions[metal_ind]
                 ha += 1
                 ha_i += [float(x) for x in metal_position]
-                ni += 2.6 / distance(o_coor, metal_position)
+                ni += 2.6 / math.distance(o_coor, metal_position)
             # indices of points close to water
             inds = tree.query_ball_point(o_coor, r=1.41)
             h2o_inds += inds
@@ -320,13 +233,13 @@ def trajectory_analysis(
                         ha_inds += inds
                         if get_partners:
                             for ind in inds:
-                                grid_partners[ind][grid_list_dict["ha"]] += ha_i
+                                grid_partners[ind][lookup.grid_list_dict["ha"]] += ha_i
                     # double
                     elif ha == 2:
                         ha2_inds += inds
                         if get_partners:
                             for ind in inds:
-                                grid_partners[ind][grid_list_dict["ha2"]] += ha_i
+                                grid_partners[ind][lookup.grid_list_dict["ha2"]] += ha_i
                 # single hydrogen bond donors
                 elif hd == 1:
                     # single donor
@@ -334,26 +247,26 @@ def trajectory_analysis(
                         hd_inds += inds
                         if get_partners:
                             for ind in inds:
-                                grid_partners[ind][grid_list_dict["hd"]] += hd_i
+                                grid_partners[ind][lookup.grid_list_dict["hd"]] += hd_i
                     # mixed donor acceptor
                     elif ha == 1:
                         hda_inds += inds
                         if get_partners:
                             for ind in inds:
-                                grid_partners[ind][grid_list_dict["hda"]][0] += hd_i
-                                grid_partners[ind][grid_list_dict["hda"]][1] += ha_i
+                                grid_partners[ind][lookup.grid_list_dict["hda"]][0] += hd_i
+                                grid_partners[ind][lookup.grid_list_dict["hda"]][1] += ha_i
                 else:
                     # double hydrogen bond donor
                     hd2_inds += inds
                     if get_partners:
                         for ind in inds:
-                            grid_partners[ind][grid_list_dict["hd2"]] += hd_i
+                            grid_partners[ind][lookup.grid_list_dict["hd2"]] += hd_i
                 # ionizable interactions and cation-pi interactions
                 # negative ionizable and cation-pi interactions
                 for pi_ind in pi_list:
                     pi_i = pi_positions[pi_ind]
                     # negative ionizable interaction
-                    ni += 2.6 / distance(o_coor, pi_i)
+                    ni += 2.6 / math.distance(o_coor, pi_i)
                     # cation-pi interaction
                     for ind in inds:
                         grid_point = [
@@ -361,18 +274,18 @@ def trajectory_analysis(
                             grid_score["y"][ind],
                             grid_score["z"][ind],
                         ]
-                        pi_distance = distance(grid_point, pi_i)
+                        pi_distance = math.distance(grid_point, pi_i)
                         if 3.1 <= pi_distance <= 6.0:
-                            grid_score["ai"][ind] += cation_pi_distance_score_dict[
+                            grid_score["ai"][ind] += lookup.cation_pi_distance_score_dict[
                                 round(pi_distance, 1)
                             ]
                             if get_partners:
-                                grid_partners[ind][grid_list_dict["ai"]] += [
+                                grid_partners[ind][lookup.grid_list_dict["ai"]] += [
                                     float(x) for x in pi_i
                                 ]
                 # positive ionizable
                 for ni_ind in ni_list:
-                    pi += 2.6 / distance(o_coor, ni_positions[ni_ind])
+                    pi += 2.6 / math.distance(o_coor, ni_positions[ni_ind])
                 # add ionizable interaction score
                 if pi > 0:
                     grid_score["pi"][inds] += pi
@@ -384,7 +297,7 @@ def trajectory_analysis(
                 if len(hi_list) > 0:
                     hi += 1
                     if len(hi_list) > 1:
-                        hi += buriedness(o_coor, hi_positions[hi_list])
+                        hi += trajectory_helper.buriedness(o_coor, hi_positions[hi_list])
                 if hi > 0:
                     grid_score["hi_norm"][inds] += hi
                     # no charged environment
@@ -400,33 +313,33 @@ def trajectory_analysis(
                             grid_score["y"][ind],
                             grid_score["z"][ind],
                         ]
-                        ai_distance = distance(grid_point, ai_i)
+                        ai_distance = math.distance(grid_point, ai_i)
                         if 3.1 <= ai_distance <= 6.0:
-                            ai_vector = vector(ai_i, grid_point)
-                            ai_n, alpha = ai_geometry(ai_vector, ai_n)
+                            ai_vector = math.vector(ai_i, grid_point)
+                            ai_n, alpha = trajectory_helper.ai_geometry(ai_vector, ai_n)
                             # cation-pi interactions
-                            if alpha <= CATION_PI_ANGLE_CUTOFF:
-                                grid_score["pi"][ind] += cation_pi_distance_score_dict[
+                            if alpha <= lookup.CATION_PI_ANGLE_CUTOFF:
+                                grid_score["pi"][ind] += lookup.cation_pi_distance_score_dict[
                                     round(ai_distance, 1)
                                 ]
                             # pi- and t-stacking
                             if ai_distance >= 3.3:
                                 # pi- and t-stacking with pi-system of protein aromatic center
                                 if alpha < 45:
-                                    offset = opposite(alpha, ai_distance)
+                                    offset = math.opposite(alpha, ai_distance)
                                     # pi-stacking
                                     if ai_distance <= 4.7:
                                         # check offset between grid point and aromatic center
                                         if offset <= 2.0:
                                             grid_score["ai"][
                                                 ind
-                                            ] += pi_stacking_distance_score_dict[
+                                            ] += lookup.pi_stacking_distance_score_dict[
                                                 round(ai_distance, 1)
                                             ]
                                             if get_partners:
                                                 grid_partners[ind][
-                                                    grid_list_dict["ai"]
-                                                ] += pi_stacking_partner_position(
+                                                    lookup.grid_list_dict["ai"]
+                                                ] += trajectory_helper.pi_stacking_partner_position(
                                                     grid_point, ai_n, ai_distance, alpha
                                                 )
                                     # t-stacking
@@ -435,13 +348,13 @@ def trajectory_analysis(
                                         if offset <= 0.5:
                                             grid_score["ai"][
                                                 ind
-                                            ] += t_stacking_distance_score_dict[
+                                            ] += lookup.t_stacking_distance_score_dict[
                                                 round(ai_distance, 1)
                                             ]
                                             if get_partners:
                                                 grid_partners[ind][
-                                                    grid_list_dict["ai"]
-                                                ] += t_stacking_partner_position(
+                                                    lookup.grid_list_dict["ai"]
+                                                ] += trajectory_helper.t_stacking_partner_position(
                                                     ai_i,
                                                     grid_point,
                                                     ai_n,
@@ -454,21 +367,21 @@ def trajectory_analysis(
                                 else:
                                     if ai_distance >= 4.6:
                                         # check offset between grid point and aromatic center
-                                        offset = adjacent(alpha, ai_distance)
+                                        offset = math.adjacent(alpha, ai_distance)
                                         if offset <= 0.5:
                                             grid_score["ai"][
                                                 ind
-                                            ] += t_stacking_distance_score_dict[
+                                            ] += lookup.t_stacking_distance_score_dict[
                                                 round(ai_distance, 1)
                                             ]
                                             if get_partners:
-                                                ai_n2 = cross_product(
-                                                    ai_n, cross_product(ai_n, ai_vector)
+                                                ai_n2 = math.cross_product(
+                                                    ai_n, math.cross_product(ai_n, ai_vector)
                                                 )
-                                                ai_n2, alpha = ai_geometry(ai_vector, ai_n2)
+                                                ai_n2, alpha = trajectory_helper.ai_geometry(ai_vector, ai_n2)
                                                 grid_partners[ind][
-                                                    grid_list_dict["ai"]
-                                                ] += t_stacking_partner_position(
+                                                    lookup.grid_list_dict["ai"]
+                                                ] += trajectory_helper.t_stacking_partner_position(
                                                     ai_i,
                                                     grid_point,
                                                     ai_n2,
@@ -488,7 +401,7 @@ def trajectory_analysis(
         # grid partners to numpy array
         with frame_counter.get_lock():
             frame_counter.value += 1
-        update_progress(
+        write.update_progress(
             frame_counter.value / total_number_of_frames,
             "Progress of trajectory analysis",
             ((time.time() - trajectory_time) / frame_counter.value)
@@ -496,7 +409,7 @@ def trajectory_analysis(
         )
         logger.debug("Trajectory {} finished with frame {}.".format(counter, frame))
     logger.info("Finished analysis of trajectory {}.".format(counter))
-    grid_partners = grid_partners_to_array(grid_partners)
+    grid_partners = grid.grid_partners_to_array(grid_partners)
     results.append([grid_score, grid_partners])
     return
 
@@ -520,8 +433,8 @@ def screen_protein_conformations(
 ):
     dcd_name = "ensemble_" + str(counter) + ".dcd"
     output_directory = "/".join([directory, output_name])
-    file_path(dcd_name, output_directory)
-    logger = setup_logger(
+    write.file_path(dcd_name, output_directory)
+    logger = write.setup_logger(
         "_".join(["screen_protein_conformations", str(counter)]), directory, debugging
     )
     logger.info("Started screening of protein conformations in trajectory {}.".format(counter))
@@ -551,23 +464,23 @@ def screen_protein_conformations(
         ],
         dtype=dtype,
     )
-    main_atoms = main_selection(topology)
+    main_atoms = trajectory_helper.main_selection(topology)
     main_atomids = main_atoms["atomid"]
-    heavy_atomids = heavy_atom_selection(main_atoms)
-    hd_atomids, hd_types, hydrogen_atomid_lists = hd_selection(main_atoms)
-    ha_atomids = ha_selection(main_atoms)[0]
-    hi_atomids = hi_selection(main_atoms)
-    ni_atomids = ni_selection(main_atoms)
-    pi_atomids = pi_selection(main_atoms)
-    ai_atomids = ai_selection(main_atoms)
-    metal_atomids = metal_selection(topology, metal_names)
+    heavy_atomids = trajectory_helper.heavy_atom_selection(main_atoms)
+    hd_atomids, hd_types, hydrogen_atomid_lists = trajectory_helper.hd_selection(main_atoms)
+    ha_atomids = trajectory_helper.ha_selection(main_atoms)[0]
+    hi_atomids = trajectory_helper.hi_selection(main_atoms)
+    ni_atomids = trajectory_helper.ni_selection(main_atoms)
+    pi_atomids = trajectory_helper.pi_selection(main_atoms)
+    ai_atomids = trajectory_helper.ai_selection(main_atoms)
+    metal_atomids = trajectory_helper.metal_selection(topology, metal_names)
     features = [
         feature
-        for feature in pharmacophore_reader(pharmacophore_path, False, logger)
+        for feature in read.pharmacophore_reader(pharmacophore_path, False, logger)
         if feature[1] != "ev"
     ]
     if counter == 0:
-        file_path("protein.pdb", output_directory)
+        write.file_path("protein.pdb", output_directory)
         if debugging:
             with mda.Writer(
                 "/".join([output_directory, "protein.pdb"]), bonds=None, n_atoms=protein.n_atoms
@@ -629,12 +542,12 @@ def screen_protein_conformations(
                         ):
                             for matched_hydrogen_atomid in matched_hydrogen_atomid_list:
                                 if (
-                                    angle(
+                                    math.angle(
                                         feature_position,
                                         positions[matched_hydrogen_atomid],
                                         matched_hd_position,
                                     )
-                                    >= hb_angl_dict[matched_hd_type]
+                                    >= lookup.hb_angl_dict[matched_hd_type]
                                 ):
                                     hd = 1
                     if len(metal_atomids) > 0:
@@ -661,12 +574,12 @@ def screen_protein_conformations(
                         )
                         ni_positions = ni_positions[
                             (
-                                cdist(feature_position.reshape(1, 3), ni_positions)
-                                <= sel_cutoff_dict["ii"]
+                                    cdist(feature_position.reshape(1, 3), ni_positions)
+                                    <= lookup.sel_cutoff_dict["ii"]
                             )[0]
                         ]
                         for ni_position in ni_positions:
-                            pi += 2.6 / distance(feature_position, ni_position)
+                            pi += 2.6 / math.distance(feature_position, ni_position)
                     if len(pi_atomids) > 0:
                         pi_positions = np.array(
                             [
@@ -678,21 +591,21 @@ def screen_protein_conformations(
                         )
                         pi_positions = pi_positions[
                             (
-                                cdist(feature_position.reshape(1, 3), pi_positions)
-                                <= sel_cutoff_dict["ii"]
+                                    cdist(feature_position.reshape(1, 3), pi_positions)
+                                    <= lookup.sel_cutoff_dict["ii"]
                             )[0]
                         ]
                         for pi_position in pi_positions:
-                            ni += 2.6 / distance(feature_position, pi_position)
+                            ni += 2.6 / math.distance(feature_position, pi_position)
                     if len(metal_atomids) > 0:
                         metal_positions = positions[metal_atomids]
                         metal_booleans = (
-                            cdist(feature_position.reshape(1, 3), metal_positions)
-                            <= sel_cutoff_dict["metal"]
+                                cdist(feature_position.reshape(1, 3), metal_positions)
+                                <= lookup.sel_cutoff_dict["metal"]
                         )[0]
                         metal_positions = metal_positions[metal_booleans]
                         for metal_position in metal_positions:
-                            ni += 2.6 / distance(feature_position, metal_position)
+                            ni += 2.6 / math.distance(feature_position, metal_position)
                     if feature_type == "hi":
                         if len(hi_atomids) > 0:
                             # no charged protein environment
@@ -701,14 +614,14 @@ def screen_protein_conformations(
                             hi_positions = positions[hi_atomids]
                             hi_positions = hi_positions[
                                 (
-                                    cdist(feature_position.reshape(1, 3), hi_positions)
-                                    <= sel_cutoff_dict["hi"]
+                                        cdist(feature_position.reshape(1, 3), hi_positions)
+                                        <= lookup.sel_cutoff_dict["hi"]
                                 )[0]
                             ]
                             if len(hi_positions) > 0:
                                 hi += 1
                                 if len(hi_positions) > 1:
-                                    hi += buriedness(feature_position, hi_positions)
+                                    hi += trajectory_helper.buriedness(feature_position, hi_positions)
                             # check if pi and ni > 0.65
                             if hi < feature_score:
                                 break
@@ -729,7 +642,7 @@ def screen_protein_conformations(
                             )
                             ai_normals = np.array(
                                 [
-                                    normal(a, b, c)
+                                    math.normal(a, b, c)
                                     for a, b, c in zip(
                                         positions[ai_atomids[::3]],
                                         ai_positions,
@@ -738,17 +651,17 @@ def screen_protein_conformations(
                                 ]
                             )
                             ai_booleans = (
-                                cdist(feature_position.reshape(1, 3), ai_positions)
-                                <= sel_cutoff_dict["ai"]
+                                    cdist(feature_position.reshape(1, 3), ai_positions)
+                                    <= lookup.sel_cutoff_dict["ai"]
                             )[0]
                             ai_positions = ai_positions[ai_booleans]
                             ai_normals = ai_normals[ai_booleans]
                             for ai_i, ai_n in zip(ai_positions, ai_normals):
-                                ai_distance = distance(ai_i, feature_position)
+                                ai_distance = math.distance(ai_i, feature_position)
                                 if 3.1 <= ai_distance <= 6.0:
-                                    ai_n, alpha = ai_geometry(vector(ai_i, feature_position), ai_n)
-                                    if alpha <= CATION_PI_ANGLE_CUTOFF:
-                                        cation_pi += cation_pi_distance_score_dict[
+                                    ai_n, alpha = trajectory_helper.ai_geometry(math.vector(ai_i, feature_position), ai_n)
+                                    if alpha <= lookup.CATION_PI_ANGLE_CUTOFF:
+                                        cation_pi += lookup.cation_pi_distance_score_dict[
                                             round(ai_distance, 1)
                                         ]
                         if pi + cation_pi - ni < feature_score:
@@ -773,18 +686,18 @@ def screen_protein_conformations(
                         )
                         pi_positions = pi_positions[
                             (
-                                cdist(feature_position.reshape(1, 3), pi_positions)
-                                <= sel_cutoff_dict["ii"]
+                                    cdist(feature_position.reshape(1, 3), pi_positions)
+                                    <= lookup.sel_cutoff_dict["ii"]
                             )[0]
                         ]
                         for pi_position in pi_positions:
-                            pi_distance = distance(pi_position, feature_position)
+                            pi_distance = math.distance(pi_position, feature_position)
                             if 3.1 <= pi_distance <= 6.0:
-                                alpha = ai_geometry(
-                                    vector(pi_position, feature_position), partner_position
+                                alpha = trajectory_helper.ai_geometry(
+                                    math.vector(pi_position, feature_position), partner_position
                                 )[1]
-                                if alpha <= CATION_PI_ANGLE_CUTOFF:
-                                    ai += cation_pi_distance_score_dict[round(pi_distance, 1)]
+                                if alpha <= lookup.CATION_PI_ANGLE_CUTOFF:
+                                    ai += lookup.cation_pi_distance_score_dict[round(pi_distance, 1)]
                     if len(ai_atomids) > 0:
                         # aromatic interactions
                         ai_positions = np.array(
@@ -799,7 +712,7 @@ def screen_protein_conformations(
                         )
                         ai_normals = np.array(
                             [
-                                normal(a, b, c)
+                                math.normal(a, b, c)
                                 for a, b, c in zip(
                                     positions[ai_atomids[::3]],
                                     ai_positions,
@@ -808,30 +721,30 @@ def screen_protein_conformations(
                             ]
                         )
                         ai_booleans = (
-                            cdist(feature_position.reshape(1, 3), ai_positions)
-                            <= sel_cutoff_dict["ai"]
+                                cdist(feature_position.reshape(1, 3), ai_positions)
+                                <= lookup.sel_cutoff_dict["ai"]
                         )[0]
                         ai_positions = ai_positions[ai_booleans]
                         ai_normals = ai_normals[ai_booleans]
                         for ai_i, ai_n in zip(ai_positions, ai_normals):
-                            ai_distance = distance(ai_i, feature_position)
+                            ai_distance = math.distance(ai_i, feature_position)
                             if 3.3 <= ai_distance <= 6.0:
-                                ai_vector = vector(ai_i, feature_position)
-                                ai_n, alpha = ai_geometry(ai_vector, ai_n)
+                                ai_vector = math.vector(ai_i, feature_position)
+                                ai_n, alpha = trajectory_helper.ai_geometry(ai_vector, ai_n)
                                 angle_tolerance = math.degrees(partner_tolerance)
                                 # pi- and t-stacking with pi-system of protein aromatic center
                                 if alpha < 45:
-                                    offset = opposite(alpha, ai_distance)
+                                    offset = math.opposite(alpha, ai_distance)
                                     # pi-stacking
                                     if ai_distance <= 4.7:
                                         # check offset between grid point and aromatic center
                                         if offset <= 2.0:
                                             # check angle between normals
                                             if (
-                                                vector_angle(ai_n, partner_position)
+                                                math.vector_angle(ai_n, partner_position)
                                                 <= angle_tolerance
                                             ):
-                                                ai += pi_stacking_distance_score_dict[
+                                                ai += lookup.pi_stacking_distance_score_dict[
                                                     round(ai_distance, 1)
                                                 ]
                                     # t-stacking
@@ -841,24 +754,24 @@ def screen_protein_conformations(
                                             # check angle between normals
                                             if (
                                                 90 - angle_tolerance
-                                                <= vector_angle(ai_n, partner_position)
+                                                <= math.vector_angle(ai_n, partner_position)
                                                 >= 90 + angle_tolerance
                                             ):
-                                                ai += t_stacking_distance_score_dict[
+                                                ai += lookup.t_stacking_distance_score_dict[
                                                     round(ai_distance, 1)
                                                 ]
                                 # t-stacking with hydrogen of protein aromatic center
                                 else:
                                     if ai_distance >= 4.6:
-                                        offset = adjacent(alpha, ai_distance)
+                                        offset = math.adjacent(alpha, ai_distance)
                                         # check offset between grid point and aromatic center
                                         if offset <= 0.5:
                                             if (
                                                 90 - angle_tolerance
-                                                <= vector_angle(ai_n, partner_position)
+                                                <= math.vector_angle(ai_n, partner_position)
                                                 >= 90 + angle_tolerance
                                             ):
-                                                ai += t_stacking_distance_score_dict[
+                                                ai += lookup.t_stacking_distance_score_dict[
                                                     round(ai_distance, 1)
                                                 ]
                     if ai < feature_score:
@@ -875,7 +788,7 @@ def screen_protein_conformations(
                 if not clash:
                     if ligand_path:
                         main_positions = positions[main_atomids]
-                        if cdist(main_positions, ligand_positions).min() < CLASH_CUTOFF:
+                        if cdist(main_positions, ligand_positions).min() < lookup.CLASH_CUTOFF:
                             clash = True
                 if not clash:
                     DCD.write(protein)
@@ -883,7 +796,7 @@ def screen_protein_conformations(
             logger.debug("Trajectory {} finished with frame {}.".format(counter, frame))
             with frame_counter.get_lock():
                 frame_counter.value += 1
-            update_progress(
+            write.update_progress(
                 frame_counter.value / total_number_of_frames,
                 "Progress of trajectory analysis",
                 ((time.time() - trajectory_time) / frame_counter.value)
@@ -897,7 +810,7 @@ def screen_protein_conformations(
 
 
 def ensemble_to_centroid(topology, trajectories, output_name, directory, debugging):
-    logger = setup_logger("ensembles_to_centroid", directory, debugging)
+    logger = write.setup_logger("ensembles_to_centroid", directory, debugging)
     output_directory = "/".join([directory, output_name])
     protein_topology = "/".join([output_directory, "protein.pdb"])
     protein_trajectories = []
@@ -917,11 +830,11 @@ def ensemble_to_centroid(topology, trajectories, output_name, directory, debuggi
     if len(protein_trajectories) > 0:
         # info to user
         if len(frames) > 1:
-            update_user(
+            write.update_user(
                 "Getting centroid from {} protein conformations.".format(len(frames)), logger
             )
         else:
-            update_user("Found only 1 protein conformations.", logger)
+            write.update_user("Found only 1 protein conformations.", logger)
         # merge trajectories into one file
         protein_trajectories = [
             "/".join([output_directory, "ensemble_{}.dcd".format(x)]) for x in protein_trajectories
@@ -952,7 +865,7 @@ def ensemble_to_centroid(topology, trajectories, output_name, directory, debuggi
             centroid = 0
         # write centroid
         u = mda.Universe(topology, trajectories[int(frames[centroid].split()[0])])
-        file_path("centroid.pdb", output_directory)
+        write.file_path("centroid.pdb", output_directory)
         with mda.Writer(
             "/".join([output_directory, "centroid.pdb"]), bonds=None, n_atoms=u.atoms.n_atoms
         ) as PDB:
@@ -961,13 +874,13 @@ def ensemble_to_centroid(topology, trajectories, output_name, directory, debuggi
             ]:
                 PDB.write(u.atoms)
         # write csv with frame references
-        file_path("frames.csv", output_directory)
+        write.file_path("frames.csv", output_directory)
         frames[centroid] = "{}\t{}\t{}\n".format(
             frames[centroid].split()[0], frames[centroid].split()[1], "centroid"
         )
         with open("{}/frames.csv".format(output_directory), "w") as csv:
             csv.write("".join(["trajectory\tframe\tcentroid\n"] + frames))
     else:
-        update_user("No protein conformations found.", logger)
+        write.update_user("No protein conformations found.", logger)
         sys.exit()
     return
