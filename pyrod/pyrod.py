@@ -211,6 +211,58 @@ def exclusion_volume_params(
     return
 
 
+def generate_features(
+    dmif: str = "/path/to/pyrod/data/dmif.pkl",
+    partners: str = "/path/to/pyrod/data",
+    number_of_processes: int = 1,
+    features_per_feature_type: int = 20,
+):
+    """
+    Section for defining parameters for feature generation based on
+    dmifs. Path to dmif.pkl and the path to the directory containing the
+    partner.pkl-files (e.g. ha.pkl etc., usually same directory as for
+    dmif.pkl) need to be specified. Specify the number of features to be
+    generated per feature type. Multi processing is supported.
+    """
+    dmif = pyrod.read.pickle_reader(dmif, "dmif", logger)
+    partner_path = config.get("feature parameters", "partners")
+    features_per_feature_type, number_of_processes = pyrod.config.feature_parameters(config)
+    positions = np.array([[x, y, z] for x, y, z in zip(dmif["x"], dmif["y"], dmif["z"])])
+    manager = multiprocessing.Manager()
+    results = manager.list()
+    feature_counter = multiprocessing.Value("i", 0)
+    feature_time = time.time()
+    processes = [
+        multiprocessing.Process(
+            target=pyrod.pharmacophore.generate_features,
+            args=(
+                positions,
+                np.array(dmif[feature_type]),
+                feature_type,
+                features_per_feature_type,
+                directory,
+                partner_path,
+                debugging,
+                len(pyrod.lookup.feature_types) * features_per_feature_type,
+                feature_time,
+                feature_counter,
+                results,
+            ),
+        )
+        for feature_type in pyrod.lookup.feature_types
+    ]
+    pyrod.write.update_user("Generating features.", logger)
+    for chunk in chunks(processes, number_of_processes):
+        for process in chunk:
+            process.start()
+        for process in chunk:
+            process.join()
+    pyrod.write.update_user("Generated {} features.".format(len(results)), logger)
+    features = pyrod.pharmacophore_helper.renumber_features(results)
+    pyrod.write.pickle_writer(features, "features", "/".join([directory, "data"]))
+    return
+
+
 if __name__ == "__main__":
     start_time = time.time()
     parser = argparse.ArgumentParser(
@@ -232,50 +284,6 @@ if __name__ == "__main__":
     logger = pyrod.write.setup_logger("main", directory, debugging)
     pyrod.write.update_user("\n".join(pyrod.lookup.logo), logger)
     logger.debug("\n".join([": ".join(list(_)) for _ in config.items("directory")]))
-
-    # generating features
-    if config.has_section("feature parameters"):
-        logger.debug("\n".join([": ".join(list(_)) for _ in config.items("feature parameters")]))
-        partner_path = None
-        if "dmif" not in locals():
-            dmif = pyrod.read.pickle_reader(
-                config.get("feature parameters", "dmif"), "dmif", logger
-            )
-            partner_path = config.get("feature parameters", "partners")
-        features_per_feature_type, number_of_processes = pyrod.config.feature_parameters(config)
-        positions = np.array([[x, y, z] for x, y, z in zip(dmif["x"], dmif["y"], dmif["z"])])
-        manager = multiprocessing.Manager()
-        results = manager.list()
-        feature_counter = multiprocessing.Value("i", 0)
-        feature_time = time.time()
-        processes = [
-            multiprocessing.Process(
-                target=pyrod.pharmacophore.generate_features,
-                args=(
-                    positions,
-                    np.array(dmif[feature_type]),
-                    feature_type,
-                    features_per_feature_type,
-                    directory,
-                    partner_path,
-                    debugging,
-                    len(pyrod.lookup.feature_types) * features_per_feature_type,
-                    feature_time,
-                    feature_counter,
-                    results,
-                ),
-            )
-            for feature_type in pyrod.lookup.feature_types
-        ]
-        pyrod.write.update_user("Generating features.", logger)
-        for chunk in chunks(processes, number_of_processes):
-            for process in chunk:
-                process.start()
-            for process in chunk:
-                process.join()
-        pyrod.write.update_user("Generated {} features.".format(len(results)), logger)
-        features = pyrod.pharmacophore_helper.renumber_features(results)
-        pyrod.write.pickle_writer(features, "features", "/".join([directory, "data"]))
 
     # pharmacophore generation
     if config.has_section("pharmacophore parameters"):

@@ -20,12 +20,6 @@ except ImportError:
     from pyrod.write import update_user
 
 
-def feature_parameters(config):
-    features_per_feature_type = int(config.get("feature parameters", "features per feature type"))
-    number_of_processes = int(config.get("feature parameters", "number of processes"))
-    return [features_per_feature_type, number_of_processes]
-
-
 def pharmacophore_parameters(config):
     pharmacophore_formats = [
         x.strip()
