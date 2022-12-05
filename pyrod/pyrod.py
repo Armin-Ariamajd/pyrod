@@ -340,6 +340,44 @@ def generate_library(
     return
 
 
+def dmif_excess_parameters(
+    dmif1_path: str = "/path/to/pyrod/data/dmif1.pkl",
+    dmif2_path: str = "/path/to/pyrod/data/dmif2.pkl",
+    dmif1_name: str = "mif1",
+    dmif2_name: str = "mif2",
+    map_formats: Sequence[str] = ("ns", "xplor", "kont"),
+):
+    """
+    Section for defining parameters for comparing dmifs via dmif excess
+    maps. The grid parameters used for both dmif generations need to be the
+    same.
+    """
+    dmif1_excess, dmif2_excess = pyrod.grid.generate_dmif_excess(dmif1_path, dmif2_path)
+    pyrod.write.update_user(
+        "Writing dmif excess maps to {0}/{1}_excess and {0}/{2}_excess.".format(
+            directory, dmif1_name, dmif2_name
+        ),
+        logger,
+    )
+    for map_format in map_formats:
+        for feature_type in [x for x in dmif1_excess.dtype.names if x not in ["x", "y", "z"]]:
+            pyrod.write.dmif_writer(
+                dmif1_excess[feature_type],
+                np.array([[x, y, z] for x, y, z in zip(dmif["x"], dmif["y"], dmif["z"])]),
+                map_format,
+                feature_type,
+                "{}/{}_excess".format(directory, dmif1_name),
+                logger,
+            )
+            pyrod.write.dmif_writer(
+                dmif2_excess[feature_type],
+                np.array([[x, y, z] for x, y, z in zip(dmif["x"], dmif["y"], dmif["z"])]),
+                map_format,
+                feature_type,
+                "{}/{}_excess".format(directory, dmif2_name),
+                logger,
+            )
+
 if __name__ == "__main__":
     start_time = time.time()
     parser = argparse.ArgumentParser(
@@ -361,41 +399,6 @@ if __name__ == "__main__":
     logger = pyrod.write.setup_logger("main", directory, debugging)
     pyrod.write.update_user("\n".join(pyrod.lookup.logo), logger)
     logger.debug("\n".join([": ".join(list(_)) for _ in config.items("directory")]))
-
-    # dmif excess generation
-    if config.has_section("dmif excess parameters"):
-        (
-            dmif1_path,
-            dmif2_path,
-            dmif1_name,
-            dmif2_name,
-            map_formats,
-        ) = pyrod.config.dmif_excess_parameters(config)
-        dmif1_excess, dmif2_excess = pyrod.grid.generate_dmif_excess(dmif1_path, dmif2_path)
-        pyrod.write.update_user(
-            "Writing dmif excess maps to {0}/{1}_excess and {0}/{2}_excess.".format(
-                directory, dmif1_name, dmif2_name
-            ),
-            logger,
-        )
-        for map_format in map_formats:
-            for feature_type in [x for x in dmif1_excess.dtype.names if x not in ["x", "y", "z"]]:
-                pyrod.write.dmif_writer(
-                    dmif1_excess[feature_type],
-                    np.array([[x, y, z] for x, y, z in zip(dmif["x"], dmif["y"], dmif["z"])]),
-                    map_format,
-                    feature_type,
-                    "{}/{}_excess".format(directory, dmif1_name),
-                    logger,
-                )
-                pyrod.write.dmif_writer(
-                    dmif2_excess[feature_type],
-                    np.array([[x, y, z] for x, y, z in zip(dmif["x"], dmif["y"], dmif["z"])]),
-                    map_format,
-                    feature_type,
-                    "{}/{}_excess".format(directory, dmif2_name),
-                    logger,
-                )
 
     # centroid generation
     if config.has_section("centroid parameters"):

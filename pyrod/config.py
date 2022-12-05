@@ -19,24 +19,6 @@ except ImportError:
     from pyrod.lookup import feature_types
     from pyrod.write import update_user
 
-
-def dmif_excess_parameters(config):
-    dmif1_path = config.get("dmif excess parameters", "dmif 1")
-    dmif2_path = config.get("dmif excess parameters", "dmif 2")
-    dmif1_name = config.get("dmif excess parameters", "dmif 1 name")
-    if len(dmif1_name) == 0:
-        dmif1_name = "dmif1"
-    dmif2_name = config.get("dmif excess parameters", "dmif 2 name")
-    if len(dmif2_name) == 0:
-        dmif2_name = "dmif2"
-    map_formats = []
-    if len(config.get("dmif excess parameters", "map formats")) > 0:
-        map_formats = [
-            x.strip() for x in config.get("dmif excess parameters", "map formats").split(",")
-        ]
-    return [dmif1_path, dmif2_path, dmif1_name, dmif2_name, map_formats]
-
-
 def centroid_parameters(config, debugging):
     ligand = config.get("centroid parameters", "ligand")
     pharmacophore = config.get("centroid parameters", "pharmacophore")
