@@ -7,7 +7,6 @@ from pyrod import (
     pharmacophore,
     pharmacophore_helper,
     read,
-    test,
     trajectory,
     trajectory_helper,
     write,
