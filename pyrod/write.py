@@ -18,9 +18,9 @@ try:
     from pyrod.pyrod_lib.math import mean, standard_deviation
     from pyrod.pyrod_lib.grid import grid_characteristics
 except ImportError:
-    from pyrod_lib.lookup import feature_types
-    from pyrod_lib.math import mean, standard_deviation
-    from pyrod_lib.grid import grid_characteristics
+    from pyrod.lookup import feature_types
+    from pyrod.math import mean, standard_deviation
+    from pyrod.grid import grid_characteristics
 
 
 def file_path(name, directory):

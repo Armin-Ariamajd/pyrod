@@ -32,17 +32,17 @@ try:
     from pyrod.pyrod_lib.write import file_path, pdb_grid, dmif_writer, pharmacophore_writer, pickle_writer, \
         setup_logger, update_user, time_to_text
 except ImportError:
-    from pyrod_lib.grid import generate_grid, dmif_data_structure, post_processing, generate_dmif_excess, \
+    from pyrod.grid import generate_grid, dmif_data_structure, post_processing, generate_dmif_excess, \
         get_point_properties
-    from pyrod_lib.config import test_grid_parameters, trajectory_analysis_parameters, \
+    from pyrod.config import test_grid_parameters, trajectory_analysis_parameters, \
         exclusion_volume_parameters, feature_parameters, pharmacophore_parameters, library_parameters, \
         dmif_excess_parameters, centroid_parameters, point_properties_parameters
-    from pyrod_lib.lookup import logo, __version__, grid_list_dict, feature_types
-    from pyrod_lib.pharmacophore import generate_exclusion_volumes, generate_features, generate_library
-    from pyrod_lib.pharmacophore_helper import renumber_features
-    from pyrod_lib.read import pickle_reader
-    from pyrod_lib.trajectory import trajectory_analysis, screen_protein_conformations, ensemble_to_centroid
-    from pyrod_lib.write import file_path, pdb_grid, dmif_writer, pharmacophore_writer, pickle_writer, \
+    from pyrod.lookup import logo, __version__, grid_list_dict, feature_types
+    from pyrod.pharmacophore import generate_exclusion_volumes, generate_features, generate_library
+    from pyrod.pharmacophore_helper import renumber_features
+    from pyrod.read import pickle_reader
+    from pyrod.trajectory import trajectory_analysis, screen_protein_conformations, ensemble_to_centroid
+    from pyrod.write import file_path, pdb_grid, dmif_writer, pharmacophore_writer, pickle_writer, \
         setup_logger, time_to_text, update_user
 
 

@@ -16,8 +16,8 @@ try:
     from pyrod.pyrod_lib.lookup import feature_types
     from pyrod.pyrod_lib.write import update_user
 except ImportError:
-    from pyrod_lib.lookup import feature_types
-    from pyrod_lib.write import update_user
+    from pyrod.lookup import feature_types
+    from pyrod.write import update_user
 
 
 def test_grid_parameters(config):

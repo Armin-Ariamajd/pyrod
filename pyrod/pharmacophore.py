@@ -6,7 +6,6 @@ This module contains functions to generate exclusion volumes, features and pharm
 """
 
 # python standard libraries
-from itertools import combinations
 import os
 import sys
 import time
@@ -26,13 +25,13 @@ try:
     from pyrod.pyrod_lib.write import file_path, setup_logger, pharmacophore_writer, update_progress, update_user, \
         bytes_to_text
 except ImportError:
-    from pyrod_lib.lookup import grid_list_dict
-    from pyrod_lib.math import distance
-    from pyrod_lib.pharmacophore_helper import get_core_tolerance, get_maximal_core_tolerance, \
+    from pyrod.lookup import grid_list_dict
+    from pyrod.math import distance
+    from pyrod.pharmacophore_helper import get_core_tolerance, get_maximal_core_tolerance, \
         get_maximal_sum_of_scores, get_partner_positions, get_partner_tolerance, evaluate_pharmacophore, \
         combine_features
-    from pyrod_lib.read import pickle_reader, pharmacophore_reader
-    from pyrod_lib.write import file_path, setup_logger, pharmacophore_writer, bytes_to_text, update_progress, \
+    from pyrod.read import pickle_reader, pharmacophore_reader
+    from pyrod.write import file_path, setup_logger, pharmacophore_writer, bytes_to_text, update_progress, \
         update_user
 
 

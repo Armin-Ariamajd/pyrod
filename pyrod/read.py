@@ -19,10 +19,10 @@ try:
     from pyrod.pyrod_lib.pharmacophore_helper import renumber_features
     from pyrod.pyrod_lib.write import update_user
 except ImportError:
-    from pyrod_lib.lookup import feature_types
-    from pyrod_lib.math import mean, standard_deviation
-    from pyrod_lib.pharmacophore_helper import renumber_features
-    from pyrod_lib.write import update_user
+    from pyrod.lookup import feature_types
+    from pyrod.math import mean, standard_deviation
+    from pyrod.pharmacophore_helper import renumber_features
+    from pyrod.write import update_user
 
 
 def pickle_reader(path, text, logger):

@@ -15,7 +15,7 @@ try:
     from pyrod.pyrod_lib.math import distance, maximal_distance, mean, squared_deviations_from_mean, \
         standard_deviation, angle, maximal_angle
 except ImportError:
-    from pyrod_lib.math import distance, maximal_distance, mean, squared_deviations_from_mean, \
+    from pyrod.math import distance, maximal_distance, mean, squared_deviations_from_mean, \
         standard_deviation, angle, maximal_angle
 
 

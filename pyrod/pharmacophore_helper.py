@@ -8,7 +8,6 @@ This module contains helper functions mainly used by the pharmacophore module.
 
 # python standard library
 from itertools import combinations, product
-import operator
 
 # external libraries
 import numpy as np
@@ -21,10 +20,10 @@ try:
     from pyrod.pyrod_lib.math import distance, standard_deviation
     from pyrod.pyrod_lib.write import update_user
 except ImportError:
-    from pyrod_lib.grid import grid_characteristics, generate_grid
-    from pyrod_lib.lookup import feature_types
-    from pyrod_lib.math import distance, standard_deviation
-    from pyrod_lib.write import update_user
+    from pyrod.grid import grid_characteristics, generate_grid
+    from pyrod.lookup import feature_types
+    from pyrod.math import distance, standard_deviation
+    from pyrod.write import update_user
 
 
 def get_center(positions, cutoff):

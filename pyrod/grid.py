@@ -22,7 +22,7 @@ from numpy.lib import recfunctions as rfn
 try:
     from pyrod.pyrod_lib.lookup import grid_score_dict, grid_list_dict
 except ImportError:
-    from pyrod_lib.lookup import grid_score_dict, grid_list_dict, feature_types
+    from pyrod.lookup import grid_score_dict, grid_list_dict, feature_types
 
 
 def grid_characteristics(positions):

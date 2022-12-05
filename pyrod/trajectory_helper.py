@@ -17,11 +17,11 @@ try:
     from pyrod.pyrod_lib.math import angle, maximal_angle, norm, adjacent, vector, vector_angle, rotate_vector
     from pyrod.pyrod_lib.write import update_user
 except ImportError:
-    from pyrod_lib.lookup import protein_resnames, ha_sel_dict, hd_sel_dict, hi_sel_dict, ni_sel_dict, \
+    from pyrod.lookup import protein_resnames, ha_sel_dict, hd_sel_dict, hi_sel_dict, ni_sel_dict, \
         pi_sel_dict, ai_sel_dict, grid_score_dict, grid_list_dict, feature_types, standard_resnames_dict, \
         standard_atomnames_dict, valid_resnames
-    from pyrod_lib.math import angle, maximal_angle, norm, adjacent, vector, vector_angle, rotate_vector
-    from pyrod_lib.write import update_user
+    from pyrod.math import angle, maximal_angle, norm, adjacent, vector, vector_angle, rotate_vector
+    from pyrod.write import update_user
 
 
 def main_selection(topology):

@@ -33,17 +33,17 @@ try:
         pi_stacking_partner_position, ai_geometry, t_stacking_partner_position
     from pyrod.pyrod_lib.write import setup_logger, file_path, update_user, update_progress
 except ImportError:
-    from pyrod_lib.grid import grid_characteristics, grid_partners_to_array
-    from pyrod_lib.lookup import grid_list_dict, hb_dist_dict, hb_angl_dict, hd_sel_dict, sel_cutoff_dict, \
+    from pyrod.grid import grid_characteristics, grid_partners_to_array
+    from pyrod.lookup import grid_list_dict, hb_dist_dict, hb_angl_dict, hd_sel_dict, sel_cutoff_dict, \
         pi_stacking_distance_score_dict, t_stacking_distance_score_dict, cation_pi_distance_score_dict, \
         CATION_PI_ANGLE_CUTOFF, standard_resnames_dict, CLASH_CUTOFF
-    from pyrod_lib.math import distance, angle, normal, opposite, adjacent, norm, vector_angle, vector, \
+    from pyrod.math import distance, angle, normal, opposite, adjacent, norm, vector_angle, vector, \
         cross_product
-    from pyrod_lib.read import pharmacophore_reader
-    from pyrod_lib.trajectory_helper import main_selection, hd_selection, ha_selection, hi_selection, \
+    from pyrod.read import pharmacophore_reader
+    from pyrod.trajectory_helper import main_selection, hd_selection, ha_selection, hi_selection, \
         ni_selection, pi_selection, ai_selection, metal_selection, heavy_atom_selection, buriedness, \
         pi_stacking_partner_position, ai_geometry, t_stacking_partner_position
-    from pyrod_lib.write import setup_logger, file_path, update_user, update_progress
+    from pyrod.write import setup_logger, file_path, update_user, update_progress
 
 
 def trajectory_analysis(topology, trajectory, grid_score, grid_partners, frame_counter, total_number_of_frames,
