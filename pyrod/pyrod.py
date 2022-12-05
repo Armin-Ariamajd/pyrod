@@ -377,101 +377,158 @@ def dmif_excess_parameters(
                 "{}/{}_excess".format(directory, dmif2_name),
                 logger,
             )
+    return
 
-if __name__ == "__main__":
-    start_time = time.time()
-    parser = argparse.ArgumentParser(
-        prog="PyRod",
-        description="\n".join(pyrod.lookup.logo),
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
-    parser.add_argument("conf", help="path to configuration file")
-    parser.add_argument(
-        "--verbose", dest="debugging", action="store_true", help="verbose logging for debugging"
-    )
-    conf = parser.parse_args().conf
-    debugging = parser.parse_args().debugging
-    config = configparser.ConfigParser()
-    config.read(conf)
-    directory = config.get("directory", "directory")
-    if len(directory) == 0:
-        directory = os.getcwd() + "/pyrod"
-    logger = pyrod.write.setup_logger("main", directory, debugging)
-    pyrod.write.update_user("\n".join(pyrod.lookup.logo), logger)
-    logger.debug("\n".join([": ".join(list(_)) for _ in config.items("directory")]))
 
-    # centroid generation
-    if config.has_section("centroid parameters"):
-        pyrod.write.update_user("Starting screening of protein conformations.", logger)
-        logger.debug("\n".join([": ".join(list(_)) for _ in config.items("centroid parameters")]))
-        (
-            ligand,
-            pharmacophore_path,
-            topology,
-            trajectories,
-            first_frame,
-            last_frame,
-            step_size,
-            total_number_of_frames,
-            metal_names,
-            output_name,
-            number_of_processes,
-        ) = pyrod.config.centroid_parameters(config, debugging)
-        frame_counter = multiprocessing.Value("i", 0)
-        trajectory_time = time.time()
-        processes = [
-            multiprocessing.Process(
-                target=pyrod.trajectory.screen_protein_conformations,
-                args=(
-                    topology,
-                    trajectory,
-                    pharmacophore_path,
-                    ligand,
-                    counter,
-                    first_frame,
-                    last_frame,
-                    step_size,
-                    metal_names,
-                    directory,
-                    output_name,
-                    debugging,
-                    total_number_of_frames,
-                    frame_counter,
-                    trajectory_time,
-                ),
-            )
-            for counter, trajectory in enumerate(trajectories)
-        ]
-        if len(trajectories) > 1:
-            pyrod.write.update_user(
-                "Analyzing {} frames from {} trajectories.".format(
-                    total_number_of_frames, len(trajectories)
-                ),
-                logger,
-            )
-        else:
-            pyrod.write.update_user(
-                "Analyzing {} frames from 1 trajectory.".format(total_number_of_frames), logger
-            )
-        for chunk in chunks(processes, number_of_processes):
-            for process in chunk:
-                process.start()
-            for process in chunk:
-                process.join()
-        pyrod.write.update_user("Finding centroid generation.", logger)
-        if debugging:
+def centroid_params(
+        ligand: str,
+        pharmacophore_path: str = "/path/to/pharmacophore.file",
+        topology: str = "/path/to/topology.pdb",
+        trajectories: Sequence[str] = (
+                "/path/to/trajectory0.dcd",
+                "/path/to/trajectory1.dcd",
+                "/path/to/trajectory2.dcd",
+                "/path/to/trajectory3.dcd",
+                "/path/to/trajectory4.dcd"
+        ),
+        first_frame: Optional[int] = None,
+        last_frame: Optional[int] = None,
+        step_size: Optional[int] = None,
+        metal_names: Sequence[str] = ("FE",),
+        output_name: str = "centroid",
+        number_of_processes: int = 1,
+):
+    """
+    Section for defining parameters for protein centroid generation. The 
+    provided trajectories will be screened for protein conformations that  
+    match the given pharmacophore and are not involved in severe atom      
+    clashes with the ligand (mol2 format, optional). Exclusion volumes are 
+    ignored. Matching protein conformations will be analyzed to select a   
+    protein centroid. First frame, last frame and step size parameters can 
+    be used to specify the part of the trajectories to analyze. If all     
+    three parameters are empty, trajectories will be analyzed from         
+    beginning to end. Important metals can be specified comma-separated as 
+    named in the topology file (e.g. FE). Multi processing is supported. If
+    a ligand is not provided, protein conformations are only checked to    
+    match the given pharmacophore. Several parameters in the pharmacophore 
+    file !have! to be adjusted to allow screening of protein conformations 
+    (see box below centroid parameter section). This component will output 
+    a csv-file containing information about matching frames, a trajectory  
+    of the protein with all frames fitting the pharmacophore (protein.pdb, 
+    ensemble.dcd) and the centroid in pdb-format including all atoms, e.g. 
+    water, lipids and ions.
+    
+      The parameters in the pharmacophore file !have! to be modified to     
+    provide score minima for hydrophobic, aromatic and ionizable            
+    interactions and !can! be further modified to make the search less or   
+    more restrictive by altering the tolerance parameters. This can be done 
+    directly in the pml or pdb pharmacophore file using a text editor.      
+                                                                            
+      Score minima (default = 1) are read from the weight parameters in the 
+    pml file or the b-factor column in the pdb pharmacophore file and       
+    specify the minimal score to accept an interaction in the protein       
+    conformation screen:                                                    
+      The score of hydrophobic features corresponds to the number of        
+    hydrophobic atoms nearby scaled by buriedness and can be estimated with 
+    the hi_norm dmif, e.g. a score of 3 will filter protein conformations   
+    to allow a hydrophobic score not less than 3.                           
+      The score of ionizable features corresponds to the distance between   
+    the charged centers (score = 2.6 / distance). Hence, a weight of 1 will 
+    filter protein conformations to allow an ionizable interaction with a   
+    distance of not more than 2.6 A. Since, ionizable interactions can      
+    include multiple charged centers of the protein, a score of e.g. 1.6    
+    will most likely filter protein conformations that allow ionizable      
+    interactions with 2 or more charged centers of the protein.             
+      The score of aromatic features corresponds to the distance between    
+    the atom groups. An optimal distance leads to a score of 1 and is       
+    different for pi-stacking (3.5 A), t-stacking (5.0 A) and cation-pi     
+    interactions (3.8 A). The complete distance based scoring can be found  
+    in pyrod/pyrod_lib/lookup.py. Similar to ionizable interactions,        
+    aromatic interaction can involve multiple partners leading to a score   
+    higher than 1.                                                          
+      The scores of hydrogen bonds are ignored.                             
+                                                                            
+      The restrictiveness of the protein conformation search can be further 
+    altered by changing the tolerance parameter of the feature core and the 
+    feature partner.                                                        
+      The tolerance radius of the feature core (default = 1.5 A) is used as 
+    a threshold for clashes with the protein heavy atoms. Hence, a core     
+    tolerance radius of 2.5 A of a certain feature will filter protein      
+    conformations that lack heavy atoms within 2.5 A of that feature. A     
+    minimal core tolerance radius of 2.5 A (corresponding to a relatively   
+    short hydrogen bond) is recommended and should in general not be higher 
+    for hydrogen bonds and ionizable features without any good reason. The  
+    core tolerance radii of hydrophobic and aromatic features can be        
+    higher.                                                                 
+      The tolerance radius of the feature partner of hydrogen bonds         
+    (default = 1.9499999 A) and the tolerance angle for aromatic            
+    interactions (default = 0.43633232 rad or 25 °) are used to check for   
+    feature partners on the protein site. Decreasing these parameters will  
+    make the search more restrictive.                                                                                   
+    """
+    if debugging:
+        total_number_of_frames = len(
+            mda.Universe(trajectories[0]).trajectory[first_frame:last_frame:step_size]
+        ) * len(trajectories)
+    else:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            total_number_of_frames = len(
+                mda.Universe(trajectories[0]).trajectory[first_frame:last_frame:step_size]
+            ) * len(trajectories)
+    frame_counter = multiprocessing.Value("i", 0)
+    trajectory_time = time.time()
+    processes = [
+        multiprocessing.Process(
+            target=pyrod.trajectory.screen_protein_conformations,
+            args=(
+                topology,
+                trajectory,
+                pharmacophore_path,
+                ligand,
+                counter,
+                first_frame,
+                last_frame,
+                step_size,
+                metal_names,
+                directory,
+                output_name,
+                debugging,
+                total_number_of_frames,
+                frame_counter,
+                trajectory_time,
+            ),
+        )
+        for counter, trajectory in enumerate(trajectories)
+    ]
+    if len(trajectories) > 1:
+        pyrod.write.update_user(
+            "Analyzing {} frames from {} trajectories.".format(
+                total_number_of_frames, len(trajectories)
+            ),
+            logger,
+        )
+    else:
+        pyrod.write.update_user(
+            "Analyzing {} frames from 1 trajectory.".format(total_number_of_frames), logger
+        )
+    for chunk in chunks(processes, number_of_processes):
+        for process in chunk:
+            process.start()
+        for process in chunk:
+            process.join()
+    pyrod.write.update_user("Finding centroid generation.", logger)
+    if debugging:
+        pyrod.trajectory.ensemble_to_centroid(
+            topology, trajectories, output_name, directory, debugging
+        )
+    else:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
             pyrod.trajectory.ensemble_to_centroid(
                 topology, trajectories, output_name, directory, debugging
             )
-        else:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                pyrod.trajectory.ensemble_to_centroid(
-                    topology, trajectories, output_name, directory, debugging
-                )
-        pyrod.write.update_user(
-            "Output written to {0}.".format("/".join([directory, output_name])), logger
-        )
     pyrod.write.update_user(
-        "Finished after {}.".format(pyrod.write.time_to_text(time.time() - start_time)), logger
+        "Output written to {0}.".format("/".join([directory, output_name])), logger
     )
+    return
