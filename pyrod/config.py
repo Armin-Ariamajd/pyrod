@@ -20,42 +20,6 @@ except ImportError:
     from pyrod.write import update_user
 
 
-def pharmacophore_parameters(config):
-    pharmacophore_formats = [
-        x.strip()
-        for x in config.get("pharmacophore parameters", "pharmacophore formats").split(",")
-    ]
-    return pharmacophore_formats
-
-
-def library_parameters(config, directory):
-    pharmacophore_path = config.get("library parameters", "pharmacophore path")
-    output_format = config.get("library parameters", "output format")
-    library_dict = {}
-    for parameter in [
-        "minimal features",
-        "maximal features",
-        "minimal hydrogen bonds",
-        "maximal hydrogen bonds",
-        "minimal hydrophobic interactions",
-        "maximal hydrophobic interactions",
-        "minimal aromatic interactions",
-        "maximal aromatic interactions",
-        "minimal ionizable interactions",
-        "maximal ionizable interactions",
-    ]:
-        library_dict[parameter] = int(config.get("library parameters", parameter))
-    if len(config.get("library parameters", "library name")) > 0:
-        library_name = config.get("library parameters", "library name")
-    else:
-        library_name = "library"
-    library_path = "{}/pharmacophores/{}".format(directory, library_name)
-    pyrod_pharmacophore = True
-    if config.get("library parameters", "pyrod pharmacophore") == "false":
-        pyrod_pharmacophore = False
-    return [pharmacophore_path, output_format, library_dict, library_path, pyrod_pharmacophore]
-
-
 def dmif_excess_parameters(config):
     dmif1_path = config.get("dmif excess parameters", "dmif 1")
     dmif2_path = config.get("dmif excess parameters", "dmif 2")
