@@ -7,6 +7,7 @@ dMIFs, pharmacophores and centroids.
 """
 
 # Standard library
+from typing import Tuple
 import argparse
 import configparser
 import multiprocessing
@@ -25,6 +26,36 @@ def chunks(iterable, chunk_size):
     """This functions returns a list of chunks."""
     for i in range(0, len(iterable), chunk_size):
         yield iterable[i : i + chunk_size]
+
+
+def write_test_grid_to_pdb(
+        center: Tuple[float, float, float],
+        size: Tuple[float, float, float],
+        name: str,
+        output_path,
+):
+    """
+    Section for determining center and edge lengths parameters (integers)
+    for later dmif analysis. A pdb file will be written containing grid
+    points represented as pseudo atoms that can be used to check proper
+    grid placement in e.g. pymol or vmd. The center and edge lengths
+    parameters define the center and edge lengths of the grid for x, y and
+    z axis.
+    """
+    # determine space resulting in less than 100000 grid points
+    space = 0.5
+    space_found = False
+    while not space_found:
+        grid = pyrod.grid.generate_grid(center, size, space)
+        if len(grid) < 100000:
+            space_found = True
+            pyrod.write.pdb_grid(grid, name, "{}/test".format(output_path))
+        else:
+            if space == 0.5:
+                space += 0.5
+            else:
+                space += 1
+    return
 
 
 if __name__ == "__main__":
@@ -48,24 +79,7 @@ if __name__ == "__main__":
     logger = pyrod.write.setup_logger("main", directory, debugging)
     pyrod.write.update_user("\n".join(pyrod.lookup.logo), logger)
     logger.debug("\n".join([": ".join(list(_)) for _ in config.items("directory")]))
-    # defining grid
-    if config.has_section("test grid parameters"):
-        logger.debug("\n".join([": ".join(list(_)) for _ in config.items("test grid parameters")]))
-        center, edge_lengths, name = pyrod.config.test_grid_parameters(config)
-        # determine space resulting in less than 100000 grid points
-        space = 0.5
-        space_found = False
-        while not space_found:
-            grid = pyrod.grid.generate_grid(center, edge_lengths, space)
-            if len(grid) < 100000:
-                space_found = True
-                pyrod.write.pdb_grid(grid, name, "{}/test".format(directory))
-                pyrod.write.update_user("Writing test grid to {}/test.".format(directory), logger)
-            else:
-                if space == 0.5:
-                    space += 0.5
-                else:
-                    space += 1
+
     # point properties
     if config.has_section("point properties parameters"):
         logger.debug(
@@ -76,6 +90,7 @@ if __name__ == "__main__":
         point_properties_dict = pyrod.grid.get_point_properties(point, dmif_path)
         for key, value in point_properties_dict.items():
             pyrod.write.update_user("{}: {}".format(key, value), logger)
+
     # trajectory analysis
     if config.has_section("trajectory analysis parameters"):
         pyrod.write.update_user("Starting trajectory analysis.", logger)
@@ -171,6 +186,7 @@ if __name__ == "__main__":
                     "{}/{}".format(directory, "dmifs"),
                     logger,
                 )
+
     # generating exclusion volumes
     if config.has_section("exclusion volume parameters"):
         logger.debug(
@@ -185,6 +201,7 @@ if __name__ == "__main__":
             dmif, directory, debugging, shape_cutoff, restrictive
         )
         pyrod.write.pickle_writer(evs, "exclusion_volumes", "/".join([directory, "data"]))
+
     # generating features
     if config.has_section("feature parameters"):
         logger.debug("\n".join([": ".join(list(_)) for _ in config.items("feature parameters")]))
@@ -228,6 +245,7 @@ if __name__ == "__main__":
         pyrod.write.update_user("Generated {} features.".format(len(results)), logger)
         features = pyrod.pharmacophore_helper.renumber_features(results)
         pyrod.write.pickle_writer(features, "features", "/".join([directory, "data"]))
+
     # pharmacophore generation
     if config.has_section("pharmacophore parameters"):
         logger.debug(
@@ -258,12 +276,14 @@ if __name__ == "__main__":
             pharmacophore_directory,
             logger,
         )
+
     # library generation
     if config.has_section("library parameters"):
         logger.debug("\n".join([": ".join(list(_)) for _ in config.items("library parameters")]))
         pyrod.pharmacophore.generate_library(
             *pyrod.config.library_parameters(config, directory), directory, debugging
         )
+
     # dmif excess generation
     if config.has_section("dmif excess parameters"):
         (
@@ -298,6 +318,7 @@ if __name__ == "__main__":
                     "{}/{}_excess".format(directory, dmif2_name),
                     logger,
                 )
+
     # centroid generation
     if config.has_section("centroid parameters"):
         pyrod.write.update_user("Starting screening of protein conformations.", logger)

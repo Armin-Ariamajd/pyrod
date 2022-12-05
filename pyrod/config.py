@@ -20,15 +20,6 @@ except ImportError:
     from pyrod.write import update_user
 
 
-def test_grid_parameters(config):
-    center = [int(x.strip()) for x in config.get("test grid parameters", "center").split(",")]
-    edge_lengths = [
-        int(x.strip()) for x in config.get("test grid parameters", "edge lengths").split(",")
-    ]
-    name = "_".join(str(_) for _ in center + edge_lengths)
-    return [center, edge_lengths, name]
-
-
 def point_properties_parameters(config):
     point = [
         float(x.strip()) for x in config.get("point properties parameters", "point").split(",")
