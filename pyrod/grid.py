@@ -17,7 +17,7 @@ import numpy as np
 from numpy.lib import recfunctions as rfn
 
 # pyrod modules
-from pyrod.lookup import grid_score_dict, grid_list_dict, feature_types
+import pyrod.lookup
 
 
 def grid_characteristics(positions):
@@ -64,13 +64,13 @@ def dmif_data_structure(grid, get_partners):
     grid_score = []
     grid_partners = []
     for position in grid:
-        grid_score.append(position + [0] * (len(grid_score_dict.keys()) - 3))
+        grid_score.append(position + [0] * (len(pyrod.lookup.grid_score_dict.keys()) - 3))
         if get_partners:
             grid_partners.append(
                 [
                     [] if x[0] != "hda" else [[], []]
                     for x in sorted(
-                        [[x, grid_list_dict[x]] for x in grid_list_dict.keys()],
+                        [[x, pyrod.lookup.grid_list_dict[x]] for x in pyrod.lookup.grid_list_dict.keys()],
                         key=operator.itemgetter(1),
                     )
                 ]
@@ -80,7 +80,7 @@ def dmif_data_structure(grid, get_partners):
         dtype=[
             (x[0], float)
             for x in sorted(
-                [[x, grid_score_dict[x]] for x in grid_score_dict.keys()],
+                [[x, pyrod.lookup.grid_score_dict[x]] for x in pyrod.lookup.grid_score_dict.keys()],
                 key=operator.itemgetter(1),
             )
         ],
@@ -94,7 +94,7 @@ def grid_partners_to_array(grid_partners):
         dtype=[
             (x[0], "O")
             for x in sorted(
-                [[x, grid_list_dict[x]] for x in grid_list_dict.keys()], key=operator.itemgetter(1)
+                [[x, pyrod.lookup.grid_list_dict[x]] for x in pyrod.lookup.grid_list_dict.keys()], key=operator.itemgetter(1)
             )
         ],
     )
@@ -143,7 +143,7 @@ def generate_dmif_excess(dmif1_path, dmif2_path):
     ):
         dmif1_excess = copy.deepcopy(dmif1)
         dmif2_excess = copy.deepcopy(dmif2)
-        for feature_name in feature_types:
+        for feature_name in pyrod.lookup.feature_types:
             dmif1_excess[feature_name] -= dmif2[feature_name]
             dmif1_excess[feature_name] = np.clip(dmif1_excess[feature_name], 0, None)
             dmif2_excess[feature_name] -= dmif1[feature_name]
