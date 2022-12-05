@@ -9,59 +9,7 @@ This module contains helper functions mainly used by the trajectory module.
 # external libraries
 import numpy as np
 
-# pyrod modules
-try:
-    from pyrod.pyrod_lib.lookup import (
-        protein_resnames,
-        ha_sel_dict,
-        hd_sel_dict,
-        hi_sel_dict,
-        ni_sel_dict,
-        pi_sel_dict,
-        ai_sel_dict,
-        grid_score_dict,
-        grid_list_dict,
-        feature_types,
-        standard_resnames_dict,
-        standard_atomnames_dict,
-        valid_resnames,
-    )
-    from pyrod.pyrod_lib.math import (
-        angle,
-        maximal_angle,
-        norm,
-        adjacent,
-        vector,
-        vector_angle,
-        rotate_vector,
-    )
-    from pyrod.pyrod_lib.write import update_user
-except ImportError:
-    from pyrod.lookup import (
-        protein_resnames,
-        ha_sel_dict,
-        hd_sel_dict,
-        hi_sel_dict,
-        ni_sel_dict,
-        pi_sel_dict,
-        ai_sel_dict,
-        grid_score_dict,
-        grid_list_dict,
-        feature_types,
-        standard_resnames_dict,
-        standard_atomnames_dict,
-        valid_resnames,
-    )
-    from pyrod.math import (
-        angle,
-        maximal_angle,
-        norm,
-        adjacent,
-        vector,
-        vector_angle,
-        rotate_vector,
-    )
-    from pyrod.write import update_user
+from pyrod import lookup, math
 
 
 def main_selection(topology):
@@ -70,21 +18,21 @@ def main_selection(topology):
     counter = -1
     for atom in topology:
         # standardize resnames
-        for alternative_names in standard_resnames_dict.keys():
+        for alternative_names in lookup.standard_resnames_dict.keys():
             if atom["resname"] in alternative_names:
-                atom["resname"] = standard_resnames_dict[alternative_names]
+                atom["resname"] = lookup.standard_resnames_dict[alternative_names]
         # standardize atomnames
-        if atom["resname"] in standard_atomnames_dict.keys():
-            for alternative_names in standard_atomnames_dict[atom["resname"]]:
+        if atom["resname"] in lookup.standard_atomnames_dict.keys():
+            for alternative_names in lookup.standard_atomnames_dict[atom["resname"]]:
                 if atom["name"] in alternative_names:
-                    atom["name"] = standard_atomnames_dict[atom["resname"]][alternative_names]
+                    atom["name"] = lookup.standard_atomnames_dict[atom["resname"]][alternative_names]
         # renumber resids for protein
-        if atom["resname"] in protein_resnames:
+        if atom["resname"] in lookup.protein_resnames:
             if atom["name"] == "N":
                 counter += 1
         atom["resid"] = counter
     selection = np.empty((0, 0))
-    for resname in valid_resnames:
+    for resname in lookup.valid_resnames:
         if selection.size == 0:
             selection = topology[(topology["resname"] == resname)]
         else:
@@ -115,9 +63,9 @@ def hd_selection(main_atoms):
         name = atom["name"]
         resid = atom["resid"]
         resname = atom["resname"]
-        if name in hd_sel_dict[resname].keys():
+        if name in lookup.hd_sel_dict[resname].keys():
             hydrogen_atomids = []
-            for hydrogen_name in hd_sel_dict[resname][name]:
+            for hydrogen_name in lookup.hd_sel_dict[resname][name]:
                 hydrogen_atomids += list(
                     main_atoms[
                         (main_atoms["resid"] == resid) & (main_atoms["name"] == hydrogen_name)
@@ -139,7 +87,7 @@ def ha_selection(main_atoms):
         name = atom["name"]
         resid = atom["resid"]
         resname = atom["resname"]
-        if name in ha_sel_dict[resname]:
+        if name in lookup.ha_sel_dict[resname]:
             if resname != "HIS":
                 ha = True
             else:
@@ -148,7 +96,7 @@ def ha_selection(main_atoms):
                         len(
                             main_atoms[
                                 (main_atoms["resid"] == resid)
-                                & (main_atoms["name"] == hd_sel_dict[resname][name])
+                                & (main_atoms["name"] == lookup.hd_sel_dict[resname][name])
                             ]
                         )
                         == 0
@@ -170,8 +118,8 @@ def hi_selection(main_atoms):
         name = atom["name"]
         resid = atom["resid"]
         resname = atom["resname"]
-        if resname in hi_sel_dict.keys():
-            if name in hi_sel_dict[resname]:
+        if resname in lookup.hi_sel_dict.keys():
+            if name in lookup.hi_sel_dict[resname]:
                 if resname != "CYS":
                     hi = True
                 else:
@@ -195,8 +143,8 @@ def ni_selection(main_atoms):
     for resid in set(main_atoms["resid"]):
         residue_atoms = main_atoms[(main_atoms["resid"]) == resid]
         resname = residue_atoms["resname"][0]
-        if resname in ni_sel_dict.keys():
-            for group_counter, group in enumerate(ni_sel_dict[resname]):
+        if resname in lookup.ni_sel_dict.keys():
+            for group_counter, group in enumerate(lookup.ni_sel_dict[resname]):
                 charged = True
                 hydrogen_counter = 0
                 for hydrogen_name in group[1]:
@@ -214,15 +162,15 @@ def ni_selection(main_atoms):
                     charged = False
                 if charged:
                     indices_tmp = []
-                    for name in ni_sel_dict[resname][group_counter][0]:
+                    for name in lookup.ni_sel_dict[resname][group_counter][0]:
                         index = main_atoms[
                             (main_atoms["resid"] == resid) & (main_atoms["name"] == name)
                         ]["atomid"]
                         if index.size == 1:
                             indices_tmp.append(index[0])
-                    if len(indices_tmp) == len(ni_sel_dict[resname][group_counter][0]):
+                    if len(indices_tmp) == len(lookup.ni_sel_dict[resname][group_counter][0]):
                         atomids += indices_tmp
-                        if len(ni_sel_dict[resname][group_counter][0]) == 1:
+                        if len(lookup.ni_sel_dict[resname][group_counter][0]) == 1:
                             atomids += indices_tmp
     return np.array(atomids)
 
@@ -233,8 +181,8 @@ def pi_selection(main_atoms):
     for resid in set(main_atoms["resid"]):
         residue_atoms = main_atoms[(main_atoms["resid"]) == resid]
         resname = residue_atoms["resname"][0]
-        if resname in pi_sel_dict.keys():
-            for group_counter, group in enumerate(pi_sel_dict[resname]):
+        if resname in lookup.pi_sel_dict.keys():
+            for group_counter, group in enumerate(lookup.pi_sel_dict[resname]):
                 charged = False
                 hydrogen_counter = 0
                 for hydrogen_name in group[1]:
@@ -252,15 +200,15 @@ def pi_selection(main_atoms):
                     charged = True
                 if charged:
                     indices_tmp = []
-                    for name in pi_sel_dict[resname][group_counter][0]:
+                    for name in lookup.pi_sel_dict[resname][group_counter][0]:
                         index = main_atoms[
                             (main_atoms["resid"] == resid) & (main_atoms["name"] == name)
                         ]["atomid"]
                         if index.size == 1:
                             indices_tmp.append(index[0])
-                    if len(indices_tmp) == len(pi_sel_dict[resname][group_counter][0]):
+                    if len(indices_tmp) == len(lookup.pi_sel_dict[resname][group_counter][0]):
                         atomids += indices_tmp
-                        if len(pi_sel_dict[resname][group_counter][0]) == 1:
+                        if len(lookup.pi_sel_dict[resname][group_counter][0]) == 1:
                             atomids += indices_tmp
     return np.array(atomids)
 
@@ -271,8 +219,8 @@ def ai_selection(main_atoms):
     for resid in set(main_atoms["resid"]):
         residue_atoms = main_atoms[(main_atoms["resid"]) == resid]
         resname = residue_atoms["resname"][0]
-        if resname in ai_sel_dict.keys():
-            for group_counter, group in enumerate(ai_sel_dict[resname]):
+        if resname in lookup.ai_sel_dict.keys():
+            for group_counter, group in enumerate(lookup.ai_sel_dict[resname]):
                 charged = False
                 indices_tmp = []
                 if resname == "HIS":
@@ -287,13 +235,13 @@ def ai_selection(main_atoms):
                     ):
                         charged = True
                 if not charged:
-                    for name in ai_sel_dict[resname][group_counter]:
+                    for name in lookup.ai_sel_dict[resname][group_counter]:
                         index = main_atoms[
                             (main_atoms["resid"] == resid) & (main_atoms["name"] == name)
                         ]["atomid"]
                         if index.size == 1:
                             indices_tmp.append(index[0])
-                    if len(indices_tmp) == len(ai_sel_dict[resname][group_counter]):
+                    if len(indices_tmp) == len(lookup.ai_sel_dict[resname][group_counter]):
                         atomids += indices_tmp
     return np.array(atomids)
 
@@ -310,7 +258,7 @@ def position_angle_test(position_to_test, center_position, positions, cutoff):
     """This function returns True if all possible angles between the position_to_test, center_position and all
     positions are equal or bigger than the specified cutoff."""
     for position in positions:
-        if angle(position_to_test, center_position, position) < cutoff:
+        if math.angle(position_to_test, center_position, position) < cutoff:
             return False
     return True
 
@@ -323,7 +271,7 @@ def buriedness(center_position, positions):
     origin_position = None
     while len(positions) > 0:
         if origin_position is None:
-            angle_maximum, position_index, position_index_2 = maximal_angle(
+            angle_maximum, position_index, position_index_2 = math.maximal_angle(
                 positions, center_position
             )
             if angle_maximum >= angle_cutoff:
@@ -335,7 +283,7 @@ def buriedness(center_position, positions):
             else:
                 return score
         else:
-            angle_maximum, position_index = maximal_angle(
+            angle_maximum, position_index = math.maximal_angle(
                 positions, center_position, origin_position
             )
             position_to_test = positions[position_index]
@@ -350,7 +298,7 @@ def buriedness(center_position, positions):
 
 def ai_geometry(AB, AC):
     """This function returns characteristics of a triangle important for ai calculation."""
-    alpha = vector_angle(AB, AC)
+    alpha = math.vector_angle(AB, AC)
     if alpha > 90:
         AC = [-1 * x for x in AC]
         alpha = 180 - alpha
@@ -359,21 +307,21 @@ def ai_geometry(AB, AC):
 
 def pi_stacking_partner_position(B, AC, c, alpha):
     """This function returns the position of an interacting aromatic center for pi-stacking."""
-    b = norm(AC)
-    b_new = adjacent(alpha, c)
+    b = math.norm(AC)
+    b_new = math.adjacent(alpha, c)
     position = [[float(x - ((y / b) * b_new)) for x, y in zip(B, AC)]]
     return [item for sublist in position for item in sublist]
 
 
 def t_stacking_partner_position(A, B, AC, a, c, alpha, radial=False):
     """This function returns the positions of interacting aromatic centers for t-stacking."""
-    b = norm(AC)
-    b_new = adjacent(alpha, c)
+    b = math.norm(AC)
+    b_new = math.adjacent(alpha, c)
     if radial:
         C = [x + ((y / b) * b_new) for x, y in zip(A, AC)]
-        BC = vector(B, C)
+        BC = math.vector(B, C)
         vectors = [BC]
-        vectors += [rotate_vector(BC, AC, x) for x in [30, 60, 90, 120, 150]]
+        vectors += [math.rotate_vector(BC, AC, x) for x in [30, 60, 90, 120, 150]]
         positions = [[float(x + ((y / a) * 3.5)) for x, y in zip(B, BC)] for BC in vectors]
         positions += [[float(x - ((y / a) * 3.5)) for x, y in zip(B, BC)] for BC in vectors]
         return [item for sublist in positions for item in sublist]
