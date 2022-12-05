@@ -1,0 +1,4 @@
+MDAnalysis==2.3.0
+numpy==1.23.5
+scipy==1.9.3
+simtk==0.1.0
