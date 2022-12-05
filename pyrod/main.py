@@ -169,22 +169,21 @@ def trajectory_analysis(
             process.start()
         for process in chunk:
             process.join()
+
     pyrod.write.update_user("Processing results.", logger)
     # convert multiprocessing list to true python list
-    results_list = []
-    for x in results:
-        results_list.append(x)
-    results = None
+    results_list = [x for x in results]
     dmif, partners = pyrod.grid.post_processing(results_list, total_number_of_frames)
-    results_list = None
+
     pyrod.write.update_user("Writing raw data to {}/data.".format(directory), logger)
     pyrod.write.pickle_writer(dmif, "dmif", "{}/{}".format(directory, "data"))
+
     if get_partners:
         for key in pyrod.lookup.grid_list_dict.keys():
             pyrod.write.pickle_writer(
                 partners[key].tolist(), key, "/".join([directory, "data"])
             )
-    partners = None
+
     pyrod.write.update_user("Writing maps to {}/dmifs.".format(directory), logger)
     for map_format in map_formats:
         for feature_type in [x for x in dmif.dtype.names if x not in ["x", "y", "z"]]:
